@@ -82,8 +82,8 @@ public class InventoryManager {
         player.getInventory().setContents(inventoryContents);
         player.updateInventory();
 
-        // インベントリ同期メッセージを表示
-        sendSyncNotification(player);
+        // インベントリ同期メッセージを表示 ←二重に送られるので無効化中w
+//        sendSyncNotification(player);
 
         plugin.getLogger().info(player.getName() + " のインベントリをグループ " + primaryGroup + " からロードしました。");
         return true;
@@ -120,8 +120,8 @@ public class InventoryManager {
             player.getInventory().setContents(inventoryContents);
             player.updateInventory();
 
-            // インベントリ同期メッセージを表示
-            sendSyncNotification(player);
+            // インベントリ同期メッセージを表示 同様停止
+//            sendSyncNotification(player);
 
             return true;
         } catch (Exception e) {

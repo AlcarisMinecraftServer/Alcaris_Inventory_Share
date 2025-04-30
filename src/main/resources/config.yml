@@ -1,6 +1,6 @@
 # InventoryShare プラグイン設定ファイル
 
-# このサーバーのID (一意の識別子)
+# このサーバーのID (任意のID)
 server-id: "server1"
 
 # データベース設定
@@ -25,8 +25,8 @@ sharing-groups:
 # 各サーバーの設定
 servers:
   server1:
-    sync-enderchest: true  # エンダーチェストの同期を有効にする
-    sync-economy: true     # Jeconのお金の同期を有効にする
+    sync-enderchest: true
+    sync-economy: true
 
   server2:
     sync-enderchest: true

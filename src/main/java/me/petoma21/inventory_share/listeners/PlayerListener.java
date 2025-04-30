@@ -7,6 +7,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 
 public class PlayerListener implements Listener {
@@ -21,12 +22,15 @@ public class PlayerListener implements Listener {
      * プレイヤーがサーバーに参加したときのイベント
      * 他のサーバーで保存されたインベントリをロード
      */
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
+        final Player player = event.getPlayer();
 
-        // ログイン時は少し遅らせてインベントリを同期
-        // 他のプラグインによるインベントリクリアなどの影響を避けるため
+        // 最初にプレイヤーのインベントリをクリア（無限増殖バグ防止）
+        clearPlayerInventory(player);
+
+        // ログイン時はわずかに遅らせてインベントリを同期
+        // 他のプラグインによるインベントリ操作の影響を避けるため
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -34,8 +38,11 @@ public class PlayerListener implements Listener {
                     return;
                 }
 
+                // 念のためプレイヤーのアクションを制限するメカニズムを追加
+                player.sendMessage("§2[AIS] §aプレイヤーデータを同期中...");
+
                 // インベントリのロード
-                boolean inventoryLoaded = plugin.getInventoryManager().loadPlayerInventory(player);
+                plugin.getInventoryManager().loadPlayerInventory(player);
 
                 // エンダーチェストのロード
                 plugin.getEnderChestManager().loadPlayerEnderChest(player);
@@ -44,27 +51,62 @@ public class PlayerListener implements Listener {
                 if (plugin.getEconomyManager().isEconomyEnabled()) {
                     plugin.getEconomyManager().loadPlayerBalance(player);
                 }
+
+                player.sendMessage("§2[AIS] §aデータ同期完了!");
             }
-        }.runTaskLater(plugin, 20L); // 1秒後に実行
+        }.runTaskLater(plugin, 20L);
     }
 
     /**
      * プレイヤーがサーバーから退出したときのイベント
-     * インベントリ状態を保存
+     * インベントリ状態を保存し、保存完了後にインベントリをクリア
      */
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerQuit(PlayerQuitEvent event) {
-        Player player = event.getPlayer();
+        final Player player = event.getPlayer();
+        final String playerName = player.getName();
 
-        // インベントリの保存
-        plugin.getInventoryManager().savePlayerInventory(player);
+        try {
+            // インベントリの保存
+            plugin.getInventoryManager().savePlayerInventory(player);
 
-        // エンダーチェストの保存
-        plugin.getEnderChestManager().savePlayerEnderChest(player);
+            // エンダーチェストの保存
+            plugin.getEnderChestManager().savePlayerEnderChest(player);
 
-        // 所持金の保存
-        if (plugin.getEconomyManager().isEconomyEnabled()) {
-            plugin.getEconomyManager().savePlayerBalance(player);
+            // 所持金の保存
+            if (plugin.getEconomyManager().isEconomyEnabled()) {
+                plugin.getEconomyManager().savePlayerBalance(player);
+            }
+
+            // プレイヤーがサーバーから退出する時点でインベントリをクリア
+            clearPlayerInventory(player);
+
+            // ログに記録
+            plugin.getLogger().info(playerName + " player data save was successful!");
+
+        } catch (Exception e) {
+            plugin.getLogger().warning("An error occurred while saving " + playerName + " player data.: " + e.getMessage());
+            e.printStackTrace();
         }
+    }
+
+    /**
+     * プレイヤーのインベントリとエンダーチェストをクリアする
+     */
+    private void clearPlayerInventory(Player player) {
+        // メインインベントリをクリア
+        player.getInventory().clear();
+
+        // 防具スロットをクリア
+        player.getInventory().setArmorContents(new ItemStack[4]);
+
+        // オフハンドをクリア
+        player.getInventory().setItemInOffHand(null);
+
+        // エンダーチェストをクリア
+        player.getEnderChest().clear();
+
+        // インベントリの更新を強制
+        player.updateInventory();
     }
 }

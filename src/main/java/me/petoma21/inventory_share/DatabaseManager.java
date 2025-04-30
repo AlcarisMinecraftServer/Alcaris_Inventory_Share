@@ -61,7 +61,40 @@ public class DatabaseManager {
             plugin.getLogger().log(Level.SEVERE, "データベース切断エラー: " + e.getMessage(), e);
         }
     }
+    /**
+     * データベース接続が有効かどうかチェックします
+     * @return 接続が有効な場合はtrue、無効な場合はfalse
+     */
+    public boolean isConnectionValid() {
+        try {
+            if (connection == null || connection.isClosed()) {
+                return false;
+            }
 
+            // タイムアウト5秒で接続の有効性をチェック
+            return connection.isValid(5);
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "接続チェックエラー: " + e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * 必要に応じてデータベース接続を確立します
+     * @return 接続が有効な場合はtrue、接続に失敗した場合はfalse
+     */
+    public boolean ensureConnection() {
+        try {
+            if (!isConnectionValid()) {
+                plugin.getLogger().log(Level.INFO, "データベース接続が無効なため、再接続を試みます。");
+                return connect();
+            }
+            return true;
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "データベース再接続エラー: " + e.getMessage(), e);
+            return false;
+        }
+    }
     /**
      * 必要なテーブルを作成します
      */
@@ -107,6 +140,11 @@ public class DatabaseManager {
      */
     public void saveInventory(UUID playerUUID, String serverGroup, ItemStack[] inventory) {
         try {
+            if (!ensureConnection()) {
+                plugin.getLogger().log(Level.SEVERE, "データベース接続が確立できないため、インベントリの保存に失敗しました。");
+                return;
+            }
+
             String serializedInventory = itemStackArrayToBase64(inventory);
 
             String sql = "INSERT INTO inventory_data (uuid, server_group, inventory) VALUES (?, ?, ?) " +
@@ -129,6 +167,11 @@ public class DatabaseManager {
      */
     public ItemStack[] loadInventory(UUID playerUUID, String serverGroup) {
         try {
+            if (!ensureConnection()) {
+                plugin.getLogger().log(Level.SEVERE, "データベース接続が確立できないため、インベントリの読み込みに失敗しました。");
+                return null;
+            }
+
             String sql = "SELECT inventory FROM inventory_data WHERE uuid = ? AND server_group = ?";
 
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -154,6 +197,11 @@ public class DatabaseManager {
      */
     public void saveEnderChest(UUID playerUUID, String serverGroup, ItemStack[] enderChest) {
         try {
+            if (!ensureConnection()) {
+                plugin.getLogger().log(Level.SEVERE, "データベース接続が確立できないため、エンダーチェストの保存に失敗しました。");
+                return;
+            }
+
             String serializedEnderChest = itemStackArrayToBase64(enderChest);
 
             String sql = "INSERT INTO enderchest_data (uuid, server_group, enderchest) VALUES (?, ?, ?) " +
@@ -176,6 +224,11 @@ public class DatabaseManager {
      */
     public ItemStack[] loadEnderChest(UUID playerUUID, String serverGroup) {
         try {
+            if (!ensureConnection()) {
+                plugin.getLogger().log(Level.SEVERE, "データベース接続が確立できないため、エンダーチェストの読み込みに失敗しました。");
+                return null;
+            }
+
             String sql = "SELECT enderchest FROM enderchest_data WHERE uuid = ? AND server_group = ?";
 
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -201,6 +254,11 @@ public class DatabaseManager {
      */
     public void saveEconomy(UUID playerUUID, String serverGroup, double balance) {
         try {
+            if (!ensureConnection()) {
+                plugin.getLogger().log(Level.SEVERE, "データベース接続が確立できないため、経済データの保存に失敗しました。");
+                return;
+            }
+
             String sql = "INSERT INTO economy_data (uuid, server_group, balance) VALUES (?, ?, ?) " +
                     "ON DUPLICATE KEY UPDATE balance = ?";
 
@@ -221,6 +279,11 @@ public class DatabaseManager {
      */
     public double loadEconomy(UUID playerUUID, String serverGroup) {
         try {
+            if (!ensureConnection()) {
+                plugin.getLogger().log(Level.SEVERE, "データベース接続が確立できないため、経済データの読み込みに失敗しました。");
+                return 0.0;
+            }
+
             String sql = "SELECT balance FROM economy_data WHERE uuid = ? AND server_group = ?";
 
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
