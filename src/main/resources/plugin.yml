@@ -1,0 +1,18 @@
+name: Inventory_Share
+version: 1.0.0
+main: me.petoma21.inventory_share.Inventory_Share
+api-version: '1.21'
+authors: [petoma21]
+description: Minecraft servers inventory sharing plugin using MySQL
+website: https://example.com
+softdepend: [Vault]
+commands:
+  isreload:
+    description: InventoryShareプラグインの設定を再読み込みします
+    usage: /isreload
+    permission: inventoryshare.reload
+
+permissions:
+  inventoryshare.reload:
+    description: InventoryShareプラグインの設定を再読み込みする権限
+    default: op
