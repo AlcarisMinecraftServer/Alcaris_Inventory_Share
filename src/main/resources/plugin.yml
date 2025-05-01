@@ -4,7 +4,7 @@ main: me.petoma21.inventory_share.Inventory_Share
 api-version: '1.21'
 authors: [petoma21]
 description: Minecraft servers inventory sharing plugin using MySQL
-website: https://example.com
+website: https://petoma21.me/
 softdepend: [Vault]
 commands:
   isreload:
