@@ -1,3 +1,8 @@
+//package me.petoma21.inventory_share;
+//
+//public class Config {
+//}
+
 package me.petoma21.inventory_share;
 
 import org.bukkit.configuration.ConfigurationSection;
@@ -148,16 +153,6 @@ public class Config {
     // サーバー設定取得
     public ServerConfig getServerConfig(String serverId) {
         return serverConfigs.getOrDefault(serverId, new ServerConfig(true, true));
-    }
-
-    // 現在のサーバーのエンダーチェスト同期設定取得
-    public boolean isEnderChestEnabled() {
-        return getServerConfig(serverId).isSyncEnderChest();
-    }
-
-    // 現在のサーバーの経済同期設定取得
-    public boolean isEconomyEnabled() {
-        return getServerConfig(serverId).isSyncEconomy();
     }
 
     // サーバー設定クラス
