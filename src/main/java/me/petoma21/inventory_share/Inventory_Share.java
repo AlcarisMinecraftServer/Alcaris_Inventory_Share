@@ -28,10 +28,14 @@ public class Inventory_Share extends JavaPlugin {
         // データベース接続
         databaseManager = new DatabaseManager(this);
         if (!databaseManager.connect()) {
-            getLogger().severe("データベースへの接続に失敗しました。プラグインを無効化します。");
-            getServer().getPluginManager().disablePlugin(this);
+            getLogger().severe("===============================================");
+            getLogger().severe("========== データベース接続に失敗しました ==========");
+            getLogger().severe("==========　 サーバーの軌道を停止します 　==========");
+            getLogger().severe("===============================================");
+            getServer().shutdown();
             return;
         }
+
 
         // 各マネージャーの初期化
         inventoryManager = new InventoryManager(this);
