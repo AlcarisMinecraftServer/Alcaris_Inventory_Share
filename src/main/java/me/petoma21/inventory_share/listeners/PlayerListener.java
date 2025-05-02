@@ -44,8 +44,10 @@ public class PlayerListener implements Listener {
                 // インベントリのロード
                 plugin.getInventoryManager().loadPlayerInventory(player);
 
-                // エンダーチェストのロード
-                plugin.getEnderChestManager().loadPlayerEnderChest(player);
+                // エンダーチェストのロード（設定で有効な場合のみ）
+                if (plugin.getConfig().getBoolean("sync.enderchest", true)) {
+                    plugin.getEnderChestManager().loadPlayerEnderChest(player);
+                }
 
                 // 所持金のロード
                 if (plugin.getEconomyManager().isEconomyEnabled()) {
@@ -70,8 +72,10 @@ public class PlayerListener implements Listener {
             // インベントリの保存
             plugin.getInventoryManager().savePlayerInventory(player);
 
-            // エンダーチェストの保存
-            plugin.getEnderChestManager().savePlayerEnderChest(player);
+            // エンダーチェストの保存（設定で有効な場合のみ）
+            if (plugin.getConfig().getBoolean("sync.enderchest", true)) {
+                plugin.getEnderChestManager().savePlayerEnderChest(player);
+            }
 
             // 所持金の保存
             if (plugin.getEconomyManager().isEconomyEnabled()) {
@@ -92,6 +96,7 @@ public class PlayerListener implements Listener {
 
     /**
      * プレイヤーのインベントリとエンダーチェストをクリアする
+     * 設定に基づいてエンダーチェストのクリアを制御
      */
     private void clearPlayerInventory(Player player) {
         // メインインベントリをクリア
@@ -103,8 +108,10 @@ public class PlayerListener implements Listener {
         // オフハンドをクリア
         player.getInventory().setItemInOffHand(null);
 
-        // エンダーチェストをクリア
-        player.getEnderChest().clear();
+        // エンダーチェストをクリア（設定で有効な場合のみ）
+        if (plugin.getConfig().getBoolean("sync.enderchest", true)) {
+            player.getEnderChest().clear();
+        }
 
         // インベントリの更新を強制
         player.updateInventory();
