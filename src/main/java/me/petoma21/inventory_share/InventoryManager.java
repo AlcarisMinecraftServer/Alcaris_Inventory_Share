@@ -1,8 +1,3 @@
-//package me.petoma21.inventory_share;
-//
-//public class InventoryManager {
-//}
-
 package me.petoma21.inventory_share;
 
 import org.bukkit.Bukkit;
@@ -29,6 +24,21 @@ public class InventoryManager {
      */
     public void savePlayerInventory(Player player) {
         final UUID playerUUID = player.getUniqueId();
+        final ItemStack[] inventoryContents = player.getInventory().getContents();
+        final ItemStack[] armorContents = player.getInventory().getArmorContents();
+        final ItemStack offHandItem = player.getInventory().getItemInOffHand();
+
+        savePlayerInventoryData(playerUUID, inventoryContents, armorContents, offHandItem);
+    }
+
+    /**
+     * プレイヤーのインベントリデータを保存します (非同期処理用)
+     * @param playerUUID プレイヤーのUUID
+     * @param inventoryContents インベントリの内容
+     * @param armorContents 防具の内容
+     * @param offHandItem オフハンドのアイテム
+     */
+    public void savePlayerInventoryData(UUID playerUUID, ItemStack[] inventoryContents, ItemStack[] armorContents, ItemStack offHandItem) {
         final String serverId = plugin.getPluginConfig().getServerId();
 
         // このサーバーが属するグループを取得
@@ -39,15 +49,12 @@ public class InventoryManager {
             return;
         }
 
-        // プレイヤーのインベントリを取得
-        ItemStack[] inventoryContents = player.getInventory().getContents();
-
         // 各グループに対してインベントリを保存
         for (String group : groups) {
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                plugin.getDatabaseManager().saveInventory(playerUUID, group, inventoryContents);
-                plugin.getLogger().fine(player.getName() + " のインベントリをグループ " + group + " に保存しました。");
-            });
+            plugin.getDatabaseManager().saveInventory(playerUUID, group, inventoryContents);
+            plugin.getLogger().fine(playerUUID + " のインベントリをグループ " + group + " に保存しました。");
+
+            // TODO: 必要に応じて防具やオフハンドの保存も実装
         }
     }
 
@@ -57,7 +64,20 @@ public class InventoryManager {
      * @return インベントリが見つかってロードされた場合はtrue、それ以外はfalse
      */
     public boolean loadPlayerInventory(Player player) {
-        final UUID playerUUID = player.getUniqueId();
+        Object inventoryData = loadPlayerInventoryData(player.getUniqueId());
+        if (inventoryData == null) {
+            return false;
+        }
+
+        return applyInventoryToPlayer(player, inventoryData);
+    }
+
+    /**
+     * プレイヤーのインベントリデータをロードします (非同期処理用)
+     * @param playerUUID ロード対象のプレイヤーUUID
+     * @return ロードされたインベントリデータ、見つからない場合はnull
+     */
+    public Object loadPlayerInventoryData(UUID playerUUID) {
         final String serverId = plugin.getPluginConfig().getServerId();
 
         // このサーバーが属するグループを取得
@@ -65,7 +85,7 @@ public class InventoryManager {
 
         if (groups.isEmpty()) {
             plugin.getLogger().warning("サーバー " + serverId + " は共有グループに属していません。インベントリはロードされません。");
-            return false;
+            return null;
         }
 
         // 最初のグループからインベントリをロード（複数グループの場合は最初のグループが優先）
@@ -74,19 +94,36 @@ public class InventoryManager {
 
         if (inventoryContents == null) {
             // インベントリが見つからなかった場合
-            plugin.getLogger().info(player.getName() + " のインベントリデータがグループ " + primaryGroup + " に見つかりませんでした。");
+            plugin.getLogger().info(playerUUID + " のインベントリデータがグループ " + primaryGroup + " に見つかりませんでした。");
+            return null;
+        }
+
+        plugin.getLogger().info(playerUUID + " のインベントリをグループ " + primaryGroup + " からロードしました。");
+        return inventoryContents;
+    }
+
+    /**
+     * ロードされたインベントリデータをプレイヤーに適用します (非同期処理用)
+     * @param player データを適用するプレイヤー
+     * @param inventoryData ロードされたインベントリデータ
+     * @return 適用が成功した場合はtrue、失敗した場合はfalse
+     */
+    public boolean applyInventoryToPlayer(Player player, Object inventoryData) {
+        if (!(inventoryData instanceof ItemStack[])) {
+            plugin.getLogger().warning("無効なインベントリデータ形式です: " + inventoryData.getClass().getName());
             return false;
         }
 
-        // インベントリをプレイヤーに適用
-        player.getInventory().setContents(inventoryContents);
-        player.updateInventory();
+        try {
+            // インベントリをプレイヤーに適用
+            player.getInventory().setContents((ItemStack[]) inventoryData);
+            player.updateInventory();
 
-        // インベントリ同期メッセージを表示 ←二重に送られるので無効化中w
-//        sendSyncNotification(player);
-
-        plugin.getLogger().info(player.getName() + " のインベントリをグループ " + primaryGroup + " からロードしました。");
-        return true;
+            return true;
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "プレイヤー " + player.getName() + " のインベントリ適用中にエラーが発生しました: " + e.getMessage(), e);
+            return false;
+        }
     }
 
     /**

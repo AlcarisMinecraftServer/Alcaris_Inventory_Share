@@ -49,8 +49,32 @@ public class EconomyManager {
             return;
         }
 
-        final String playerName = player.getName();
-        final UUID playerUUID = player.getUniqueId();
+        double balance = getPlayerBalance(player);
+        savePlayerBalanceData(player.getUniqueId(), balance);
+    }
+
+    /**
+     * プレイヤーの所持金を取得します
+     * @param player 対象のプレイヤー
+     * @return プレイヤーの所持金
+     */
+    public double getPlayerBalance(Player player) {
+        if (!economyEnabled) {
+            return 0.0;
+        }
+        return economy.getBalance(player);
+    }
+
+    /**
+     * プレイヤーの所持金データを保存します (非同期処理用)
+     * @param playerUUID プレイヤーのUUID
+     * @param balance 所持金
+     */
+    public void savePlayerBalanceData(UUID playerUUID, double balance) {
+        if (!economyEnabled) {
+            return;
+        }
+
         final String serverId = plugin.getPluginConfig().getServerId();
 
         // このサーバーの経済同期設定を取得
@@ -68,15 +92,10 @@ public class EconomyManager {
             return;
         }
 
-        // プレイヤーの所持金を取得
-        double balance = economy.getBalance(player);
-
         // 各グループに対して所持金を保存
         for (String group : groups) {
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                plugin.getDatabaseManager().saveEconomy(playerUUID, group, balance);
-                plugin.getLogger().fine(playerName + " の所持金 " + balance + " をグループ " + group + " に保存しました。");
-            });
+            plugin.getDatabaseManager().saveEconomy(playerUUID, group, balance);
+            plugin.getLogger().fine(playerUUID + " の所持金 " + balance + " をグループ " + group + " に保存しました。");
         }
     }
 
@@ -90,15 +109,31 @@ public class EconomyManager {
             return false;
         }
 
-        final UUID playerUUID = player.getUniqueId();
-        final String playerName = player.getName();
+        Object balanceData = loadPlayerBalanceData(player.getUniqueId());
+        if (balanceData == null) {
+            return false;
+        }
+
+        return applyBalanceToPlayer(player, balanceData);
+    }
+
+    /**
+     * プレイヤーの所持金データをロードします (非同期処理用)
+     * @param playerUUID ロード対象のプレイヤーUUID
+     * @return ロードされた所持金データ (Double型)、見つからない場合はnull
+     */
+    public Object loadPlayerBalanceData(UUID playerUUID) {
+        if (!economyEnabled) {
+            return null;
+        }
+
         final String serverId = plugin.getPluginConfig().getServerId();
 
         // このサーバーの経済同期設定を取得
         Config.ServerConfig serverConfig = plugin.getPluginConfig().getServerConfig(serverId);
         if (!serverConfig.isSyncEconomy()) {
             // このサーバーでは経済同期が無効
-            return false;
+            return null;
         }
 
         // このサーバーが属するグループを取得
@@ -106,29 +141,54 @@ public class EconomyManager {
 
         if (groups.isEmpty()) {
             plugin.getLogger().warning("サーバー " + serverId + " は共有グループに属していません。経済データはロードされません。");
-            return false;
+            return null;
         }
 
         // 最初のグループから所持金をロード（複数グループの場合は最初のグループが優先）
         String primaryGroup = groups.get(0);
         double balance = plugin.getDatabaseManager().loadEconomy(playerUUID, primaryGroup);
 
-        // 現在の所持金を取得
-        double currentBalance = economy.getBalance(player);
+        plugin.getLogger().info(playerUUID + " の所持金 " + balance + " をグループ " + primaryGroup + " からロードしました。");
+        return balance;
+    }
 
-        // 所持金を設定（差額を追加または削除）
-        if (balance > currentBalance) {
-            economy.depositPlayer(player, balance - currentBalance);
-        } else if (balance < currentBalance) {
-            economy.withdrawPlayer(player, currentBalance - balance);
-        } else {
-            // 残高が同じなら何もしない
-            plugin.getLogger().fine(playerName + " の所持金は既に " + balance + " です。");
-            return true;
+    /**
+     * ロードされた所持金データをプレイヤーに適用します (非同期処理用)
+     * @param player データを適用するプレイヤー
+     * @param balanceData ロードされた所持金データ (Double型)
+     * @return 適用が成功した場合はtrue、失敗した場合はfalse
+     */
+    public boolean applyBalanceToPlayer(Player player, Object balanceData) {
+        if (!economyEnabled) {
+            return false;
         }
 
-        plugin.getLogger().info(playerName + " の所持金 " + balance + " をグループ " + primaryGroup + " からロードしました。");
-        return true;
+        if (!(balanceData instanceof Double)) {
+            plugin.getLogger().warning("無効な所持金データ形式です: " + balanceData.getClass().getName());
+            return false;
+        }
+
+        try {
+            double balance = (Double) balanceData;
+            // 現在の所持金を取得
+            double currentBalance = economy.getBalance(player);
+
+            // 所持金を設定（差額を追加または削除）
+            if (balance > currentBalance) {
+                economy.depositPlayer(player, balance - currentBalance);
+            } else if (balance < currentBalance) {
+                economy.withdrawPlayer(player, currentBalance - balance);
+            } else {
+                // 残高が同じなら何もしない
+                plugin.getLogger().fine(player.getName() + " の所持金は既に " + balance + " です。");
+                return true;
+            }
+
+            return true;
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "プレイヤー " + player.getName() + " の所持金適用中にエラーが発生しました: " + e.getMessage(), e);
+            return false;
+        }
     }
 
     /**

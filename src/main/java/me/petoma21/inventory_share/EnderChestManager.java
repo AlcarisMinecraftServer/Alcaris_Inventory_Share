@@ -1,8 +1,3 @@
-//package me.petoma21.inventory_share;
-//
-//public class EnderChestManager {
-//}
-
 package me.petoma21.inventory_share;
 
 import org.bukkit.Bukkit;
@@ -26,7 +21,18 @@ public class EnderChestManager {
      * @param player 保存対象のプレイヤー
      */
     public void savePlayerEnderChest(Player player) {
+        final ItemStack[] enderChestContents = player.getEnderChest().getContents();
         final UUID playerUUID = player.getUniqueId();
+
+        savePlayerEnderChestData(playerUUID, enderChestContents);
+    }
+
+    /**
+     * プレイヤーのエンダーチェストデータを保存します (非同期処理用)
+     * @param playerUUID プレイヤーのUUID
+     * @param enderChestContents エンダーチェストの内容
+     */
+    public void savePlayerEnderChestData(UUID playerUUID, ItemStack[] enderChestContents) {
         final String serverId = plugin.getPluginConfig().getServerId();
 
         // このサーバーのエンダーチェスト同期設定を取得
@@ -44,15 +50,10 @@ public class EnderChestManager {
             return;
         }
 
-        // プレイヤーのエンダーチェストを取得
-        ItemStack[] enderChestContents = player.getEnderChest().getContents();
-
         // 各グループに対してエンダーチェストを保存
         for (String group : groups) {
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                plugin.getDatabaseManager().saveEnderChest(playerUUID, group, enderChestContents);
-                plugin.getLogger().fine(player.getName() + " のエンダーチェストをグループ " + group + " に保存しました。");
-            });
+            plugin.getDatabaseManager().saveEnderChest(playerUUID, group, enderChestContents);
+            plugin.getLogger().fine(playerUUID + " のエンダーチェストをグループ " + group + " に保存しました。");
         }
     }
 
@@ -62,14 +63,27 @@ public class EnderChestManager {
      * @return エンダーチェストが見つかってロードされた場合はtrue、それ以外はfalse
      */
     public boolean loadPlayerEnderChest(Player player) {
-        final UUID playerUUID = player.getUniqueId();
+        Object enderChestData = loadPlayerEnderChestData(player.getUniqueId());
+        if (enderChestData == null) {
+            return false;
+        }
+
+        return applyEnderChestToPlayer(player, enderChestData);
+    }
+
+    /**
+     * プレイヤーのエンダーチェストデータをロードします (非同期処理用)
+     * @param playerUUID ロード対象のプレイヤーUUID
+     * @return ロードされたエンダーチェストデータ、見つからない場合はnull
+     */
+    public Object loadPlayerEnderChestData(UUID playerUUID) {
         final String serverId = plugin.getPluginConfig().getServerId();
 
         // このサーバーのエンダーチェスト同期設定を取得
         Config.ServerConfig serverConfig = plugin.getPluginConfig().getServerConfig(serverId);
         if (!serverConfig.isSyncEnderChest()) {
             // このサーバーではエンダーチェスト同期が無効
-            return false;
+            return null;
         }
 
         // このサーバーが属するグループを取得
@@ -77,7 +91,7 @@ public class EnderChestManager {
 
         if (groups.isEmpty()) {
             plugin.getLogger().warning("サーバー " + serverId + " は共有グループに属していません。エンダーチェストはロードされません。");
-            return false;
+            return null;
         }
 
         // 最初のグループからエンダーチェストをロード（複数グループの場合は最初のグループが優先）
@@ -86,15 +100,34 @@ public class EnderChestManager {
 
         if (enderChestContents == null) {
             // エンダーチェストが見つからなかった場合
-            plugin.getLogger().info(player.getName() + " のエンダーチェストデータがグループ " + primaryGroup + " に見つかりませんでした。");
+            plugin.getLogger().info(playerUUID + " のエンダーチェストデータがグループ " + primaryGroup + " に見つかりませんでした。");
+            return null;
+        }
+
+        plugin.getLogger().info(playerUUID + " のエンダーチェストをグループ " + primaryGroup + " からロードしました。");
+        return enderChestContents;
+    }
+
+    /**
+     * ロードされたエンダーチェストデータをプレイヤーに適用します (非同期処理用)
+     * @param player データを適用するプレイヤー
+     * @param enderChestData ロードされたエンダーチェストデータ
+     * @return 適用が成功した場合はtrue、失敗した場合はfalse
+     */
+    public boolean applyEnderChestToPlayer(Player player, Object enderChestData) {
+        if (!(enderChestData instanceof ItemStack[])) {
+            plugin.getLogger().warning("無効なエンダーチェストデータ形式です: " + enderChestData.getClass().getName());
             return false;
         }
 
-        // エンダーチェストをプレイヤーに適用
-        player.getEnderChest().setContents(enderChestContents);
-
-        plugin.getLogger().info(player.getName() + " のエンダーチェストをグループ " + primaryGroup + " からロードしました。");
-        return true;
+        try {
+            // エンダーチェストをプレイヤーに適用
+            player.getEnderChest().setContents((ItemStack[]) enderChestData);
+            return true;
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "プレイヤー " + player.getName() + " のエンダーチェスト適用中にエラーが発生しました: " + e.getMessage(), e);
+            return false;
+        }
     }
 
     /**
