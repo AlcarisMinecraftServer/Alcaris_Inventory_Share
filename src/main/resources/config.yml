@@ -39,7 +39,3 @@ servers:
   server4:
     sync-enderchest: true
     sync-economy: false
-
-# メッセージ設定
-messages:
-  inventory-synchronized: "&aインベントリが他のサーバーと同期されました。"
