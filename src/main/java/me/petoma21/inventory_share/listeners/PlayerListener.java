@@ -20,7 +20,7 @@ public class PlayerListener implements Listener {
     private final Inventory_Share plugin;
 
     // 同期処理中のプレイヤーを追跡するためのセット
-    private final Set<UUID> syncingPlayers = new HashSet<>();
+    public static Set<UUID> syncingPlayers = new HashSet<>();
 
     // インベントリをクリアしたプレイヤーの一時的なバックアップを保存
     private final Map<UUID, Map<String, Object>> playerBackups = new HashMap<>();
@@ -42,7 +42,7 @@ public class PlayerListener implements Listener {
         syncingPlayers.add(playerUUID);
 
         // プレイヤーの現在のインベントリをバックアップ（ここではほとんどの場合空になるはず）
-        backupPlayerData(player);
+//        backupPlayerData(player);
 
         // 最初にプレイヤーのインベントリをクリア（無限増殖バグ防止）
         clearPlayerInventory(player);
@@ -53,13 +53,13 @@ public class PlayerListener implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
-//                if (!player.isOnline()) {
-//                    // プレイヤーがすでにオフラインの場合は同期フラグを解除
-//                    syncingPlayers.remove(playerUUID);
-//                    // バックアップを削除（もう必要ない）
-//                    playerBackups.remove(playerUUID);
-//                    return;
-//                }
+                if (!player.isOnline()) {
+                    // プレイヤーがすでにオフラインの場合は同期フラグを解除
+                    syncingPlayers.remove(playerUUID);
+                    // バックアップを削除（もう必要ない）
+                    playerBackups.remove(playerUUID);
+                    return;
+                }
 
                 // 非同期でデータを読み込む
                 plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -104,12 +104,12 @@ public class PlayerListener implements Listener {
                         final boolean hasData = !playerData.isEmpty();
                         plugin.getServer().getScheduler().runTask(plugin, () -> {
                             try {
-//                                if (!player.isOnline()) {
-//                                    // プレイヤーがすでにオフラインの場合は処理しない
-//                                    syncingPlayers.remove(playerUUID);
-//                                    playerBackups.remove(playerUUID);
-//                                    return;
-//                                }
+                                if (!player.isOnline()) {
+                                    // プレイヤーがすでにオフラインの場合は処理しない
+                                    syncingPlayers.remove(playerUUID);
+                                    playerBackups.remove(playerUUID);
+                                    return;
+                                }
 
                                 // データが読み込めた場合のみ適用する
                                 if (hasData) {
@@ -232,9 +232,8 @@ public class PlayerListener implements Listener {
 
             // アイテムがある場合のみ保存処理を実行
             if (hasItems) {
-                // プレイヤーがサーバーから退出する時点でインベントリをクリア
-                clearPlayerInventory(player);
 
+//まず保存してもらう
                 // 非同期でデータを保存
                 plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
                     try {
@@ -257,6 +256,10 @@ public class PlayerListener implements Listener {
                         plugin.getLogger().warning("An error occurred while saving " + playerName + " player data.: " + e.getMessage());
                         e.printStackTrace();
                     }
+
+// 最後にインベントリをクリア
+                    clearPlayerInventory(player);
+
                 });
             } else {
                 plugin.getLogger().info(playerName + " has no items to save. Skipping save operation.");

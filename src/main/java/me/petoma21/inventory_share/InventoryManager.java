@@ -54,7 +54,6 @@ public class InventoryManager {
             plugin.getDatabaseManager().saveInventory(playerUUID, group, inventoryContents);
             plugin.getLogger().fine(playerUUID + " のインベントリをグループ " + group + " に保存しました。");
 
-            // TODO: 必要に応じて防具やオフハンドの保存も実装
         }
     }
 

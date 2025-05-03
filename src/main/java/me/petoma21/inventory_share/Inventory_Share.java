@@ -15,7 +15,7 @@ public class Inventory_Share extends JavaPlugin {
     private InventoryManager inventoryManager;
     private EnderChestManager enderChestManager;
     private EconomyManager economyManager;
-
+    private InventoryListener inventoryListener;
     @Override
     public void onEnable() {
         // インスタンスを保存
@@ -24,7 +24,7 @@ public class Inventory_Share extends JavaPlugin {
         // 設定ファイルを読み込む
         saveDefaultConfig();
         config = new Config(this);
-
+        getServer().getPluginManager().registerEvents(new InventoryListener(this), this);
         // データベース接続
         databaseManager = new DatabaseManager(this);
         if (!databaseManager.connect()) {
@@ -42,6 +42,9 @@ public class Inventory_Share extends JavaPlugin {
         enderChestManager = new EnderChestManager(this);
         economyManager = new EconomyManager(this);
 
+        inventoryListener = new InventoryListener(this);
+        getServer().getPluginManager().registerEvents(inventoryListener, this);
+
         // イベントリスナーの登録
         getServer().getPluginManager().registerEvents(new InventoryListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
@@ -57,7 +60,9 @@ public class Inventory_Share extends JavaPlugin {
         if (databaseManager != null) {
             databaseManager.disconnect();
         }
-
+        if (inventoryListener != null) {
+            inventoryListener.shutdown();
+        }
         getLogger().info("InventoryShare プラグインが無効になりました。");
     }
 
