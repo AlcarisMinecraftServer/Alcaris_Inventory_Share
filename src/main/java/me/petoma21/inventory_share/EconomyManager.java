@@ -1,6 +1,7 @@
 package me.petoma21.inventory_share;
 
 import net.milkbowl.vault.economy.Economy;
+import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -235,7 +236,33 @@ public class EconomyManager {
             return false;
         }
     }
+    /**
+     * プレイヤーの所持金を直接設定する
+     * @param player 対象プレイヤー
+     * @param amount 設定する金額
+     * @return 設定に成功したかどうか
+     */
+    public boolean setPlayerBalance(Player player, double amount) {
+        if (!isEconomyEnabled() || player == null) {
+            return false;
+        }
 
+        try {
+            // 最小金額は0に制限
+            double finalAmount = Math.max(0, amount);
+
+            // Vaultを通じて所持金を設定
+            EconomyResponse response = economy.withdrawPlayer(player, economy.getBalance(player));
+            if (response.transactionSuccess()) {
+                response = economy.depositPlayer(player, finalAmount);
+                return response.transactionSuccess();
+            }
+            return false;
+        } catch (Exception e) {
+            Bukkit.getLogger().warning("[InventoryShare] Failed to set player balance for " + player.getName() + ": " + e.getMessage());
+            return false;
+        }
+    }
     /**
      * 全プレイヤーの所持金を保存します
      */

@@ -99,7 +99,6 @@ public class Inventory_Share extends JavaPlugin {
     }
 
     /**
-     * サーバー固有の設定を取得するメソッド
      * @param key 設定キー
      * @param defaultValue デフォルト値
      * @return 設定値

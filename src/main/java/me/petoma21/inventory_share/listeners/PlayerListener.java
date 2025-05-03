@@ -22,6 +22,9 @@ public class PlayerListener implements Listener {
     // 同期処理中のプレイヤーを追跡するためのセット
     private final Set<UUID> syncingPlayers = new HashSet<>();
 
+    // インベントリをクリアしたプレイヤーの一時的なバックアップを保存
+    private final Map<UUID, Map<String, Object>> playerBackups = new HashMap<>();
+
     public PlayerListener(Inventory_Share plugin) {
         this.plugin = plugin;
     }
@@ -38,19 +41,25 @@ public class PlayerListener implements Listener {
         // 同期処理中にマーク
         syncingPlayers.add(playerUUID);
 
+        // プレイヤーの現在のインベントリをバックアップ（ここではほとんどの場合空になるはず）
+        backupPlayerData(player);
+
         // 最初にプレイヤーのインベントリをクリア（無限増殖バグ防止）
         clearPlayerInventory(player);
         player.sendMessage("§2[AIS] §aプレイヤーデータを同期中... 動かずにお待ちください");
+
         // ログイン時はわずかに遅らせてインベントリを同期
         // 他のプラグインによるインベントリ操作の影響を避けるため
         new BukkitRunnable() {
             @Override
             public void run() {
-                if (!player.isOnline()) {
-                    // プレイヤーがすでにオフラインの場合は同期フラグを解除
-                    syncingPlayers.remove(playerUUID);
-                    return;
-                }
+//                if (!player.isOnline()) {
+//                    // プレイヤーがすでにオフラインの場合は同期フラグを解除
+//                    syncingPlayers.remove(playerUUID);
+//                    // バックアップを削除（もう必要ない）
+//                    playerBackups.remove(playerUUID);
+//                    return;
+//                }
 
                 // 非同期でデータを読み込む
                 plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -59,48 +68,83 @@ public class PlayerListener implements Listener {
 
                     try {
                         // インベントリデータを読み込み
-                        playerData.put("inventory", plugin.getInventoryManager().loadPlayerInventoryData(playerUUID));
+                        Object inventoryData = plugin.getInventoryManager().loadPlayerInventoryData(playerUUID);
+                        if (inventoryData != null) {
+                            playerData.put("inventory", inventoryData);
+                        } else {
+                            plugin.getLogger().warning("Player " + player.getName() + " has no inventory data.");
+                        }
 
                         // エンダーチェストデータを読み込み（設定で有効な場合のみ）
                         if (plugin.getServerSpecificConfig("sync-enderchest", true)) {
-                            playerData.put("enderchest", plugin.getEnderChestManager().loadPlayerEnderChestData(playerUUID));
+                            Object enderChestData = plugin.getEnderChestManager().loadPlayerEnderChestData(playerUUID);
+                            if (enderChestData != null) {
+                                playerData.put("enderchest", enderChestData);
+                            } else {
+                                plugin.getLogger().warning("Player " + player.getName() + " has no enderchest data.");
+                            }
                         }
 
                         // 所持金データを読み込み
                         if (plugin.getEconomyManager().isEconomyEnabled()) {
-                            playerData.put("economy", plugin.getEconomyManager().loadPlayerBalanceData(playerUUID));
+                            Object economyData = plugin.getEconomyManager().loadPlayerBalanceData(playerUUID);
+                            if (economyData != null) {
+                                playerData.put("economy", economyData);
+                            } else {
+                                plugin.getLogger().warning("Player " + player.getName() + " has no economy data.");
+                            }
+                        }
+
+                        // データが全く読み込めなかった場合
+                        if (playerData.isEmpty()) {
+                            plugin.getLogger().warning("No data found for player " + player.getName() + ". This might be their first login.");
                         }
 
                         // メインスレッドに戻ってデータを適用
+                        final boolean hasData = !playerData.isEmpty();
                         plugin.getServer().getScheduler().runTask(plugin, () -> {
                             try {
-                                if (!player.isOnline()) {
-                                    // プレイヤーがすでにオフラインの場合は処理しない
-                                    syncingPlayers.remove(playerUUID);
-                                    return;
+//                                if (!player.isOnline()) {
+//                                    // プレイヤーがすでにオフラインの場合は処理しない
+//                                    syncingPlayers.remove(playerUUID);
+//                                    playerBackups.remove(playerUUID);
+//                                    return;
+//                                }
+
+                                // データが読み込めた場合のみ適用する
+                                if (hasData) {
+                                    // インベントリを適用
+                                    if (playerData.containsKey("inventory")) {
+                                        plugin.getInventoryManager().applyInventoryToPlayer(player, playerData.get("inventory"));
+                                    }
+
+                                    // エンダーチェストを適用
+                                    if (playerData.containsKey("enderchest")) {
+                                        plugin.getEnderChestManager().applyEnderChestToPlayer(player, playerData.get("enderchest"));
+                                    }
+
+                                    // 所持金を適用
+                                    if (playerData.containsKey("economy")) {
+                                        plugin.getEconomyManager().applyBalanceToPlayer(player, playerData.get("economy"));
+                                    }
+                                } else {
+                                    // データが読み込めなかった場合、バックアップがあれば復元する
+                                    restorePlayerDataFromBackup(player);
                                 }
 
-                                // インベントリを適用
-                                if (playerData.containsKey("inventory")) {
-                                    plugin.getInventoryManager().applyInventoryToPlayer(player, playerData.get("inventory"));
-                                }
-
-                                // エンダーチェストを適用
-                                if (playerData.containsKey("enderchest")) {
-                                    plugin.getEnderChestManager().applyEnderChestToPlayer(player, playerData.get("enderchest"));
-                                }
-
-                                // 所持金を適用
-                                if (playerData.containsKey("economy")) {
-                                    plugin.getEconomyManager().applyBalanceToPlayer(player, playerData.get("economy"));
-                                }
+                                // バックアップは不要になるので削除
+                                playerBackups.remove(playerUUID);
 
                                 // 同期処理完了のマークを解除
                                 syncingPlayers.remove(playerUUID);
                                 player.sendMessage("§2[AIS] §aデータ同期完了!");
                             } catch (Exception e) {
-                                // エラー時も同期フラグを解除
+                                // エラー時はバックアップから復元を試みる
+                                restorePlayerDataFromBackup(player);
+
+                                // 同期フラグを解除
                                 syncingPlayers.remove(playerUUID);
+                                playerBackups.remove(playerUUID);
                                 player.sendMessage("§2[AIS] §cデータ同期中にエラーが発生しました。スタッフに報告してください！");
                                 plugin.getLogger().warning("Error applying player data for " + player.getName() + ": " + e.getMessage());
                                 e.printStackTrace();
@@ -109,8 +153,12 @@ public class PlayerListener implements Listener {
                     } catch (Exception e) {
                         // エラーが発生した場合、メインスレッドでエラーメッセージを表示
                         plugin.getServer().getScheduler().runTask(plugin, () -> {
+                            // エラー時はバックアップから復元を試みる
+                            restorePlayerDataFromBackup(player);
+
                             // エラー時も同期フラグを解除
                             syncingPlayers.remove(playerUUID);
+                            playerBackups.remove(playerUUID);
                             if (player.isOnline()) {
                                 player.sendMessage("§2[AIS] §cデータ同期中にエラーが発生しました。スタッフに報告してください！");
                             }
@@ -139,6 +187,8 @@ public class PlayerListener implements Listener {
             plugin.getLogger().info(playerName + " left during data synchronization. Skipping data save to prevent data loss.");
             // 同期フラグを解除
             syncingPlayers.remove(playerUUID);
+            // バックアップも削除
+            playerBackups.remove(playerUUID);
             return;
         }
 
@@ -156,32 +206,61 @@ public class PlayerListener implements Listener {
             final double balance = plugin.getEconomyManager().isEconomyEnabled()
                     ? plugin.getEconomyManager().getPlayerBalance(player) : 0.0;
 
-            // プレイヤーがサーバーから退出する時点でインベントリをクリア
-            clearPlayerInventory(player);
-
-            // 非同期でデータを保存
-            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-                try {
-                    // インベントリの保存
-                    plugin.getInventoryManager().savePlayerInventoryData(playerUUID, inventoryContents, armorContents, offHandItem);
-
-                    // エンダーチェストの保存（設定で有効な場合のみ）
-                    if (plugin.getConfig().getBoolean("sync-enderchest", true) && enderChestContents != null) {
-                        plugin.getEnderChestManager().savePlayerEnderChestData(playerUUID, enderChestContents);
+            // インベントリの内容をチェックして、空でない場合のみ保存
+            boolean hasItems = false;
+            if (inventoryContents != null) {
+                for (ItemStack item : inventoryContents) {
+                    if (item != null) {
+                        hasItems = true;
+                        break;
                     }
-
-                    // 所持金の保存
-                    if (plugin.getEconomyManager().isEconomyEnabled()) {
-                        plugin.getEconomyManager().savePlayerBalanceData(playerUUID, balance);
-                    }
-
-                    // ログに記録
-                    plugin.getLogger().info(playerName + " player data save was successful!");
-                } catch (Exception e) {
-                    plugin.getLogger().warning("An error occurred while saving " + playerName + " player data.: " + e.getMessage());
-                    e.printStackTrace();
                 }
-            });
+            }
+
+            if (!hasItems && armorContents != null) {
+                for (ItemStack item : armorContents) {
+                    if (item != null) {
+                        hasItems = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!hasItems && offHandItem != null) {
+                hasItems = true;
+            }
+
+            // アイテムがある場合のみ保存処理を実行
+            if (hasItems) {
+                // プレイヤーがサーバーから退出する時点でインベントリをクリア
+                clearPlayerInventory(player);
+
+                // 非同期でデータを保存
+                plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+                    try {
+                        // インベントリの保存
+                        plugin.getInventoryManager().savePlayerInventoryData(playerUUID, inventoryContents, armorContents, offHandItem);
+
+                        // エンダーチェストの保存（設定で有効な場合のみ）
+                        if (plugin.getServerSpecificConfig("sync-enderchest", true) && enderChestContents != null) {
+                            plugin.getEnderChestManager().savePlayerEnderChestData(playerUUID, enderChestContents);
+                        }
+
+                        // 所持金の保存
+                        if (plugin.getEconomyManager().isEconomyEnabled()) {
+                            plugin.getEconomyManager().savePlayerBalanceData(playerUUID, balance);
+                        }
+
+                        // ログに記録
+                        plugin.getLogger().info(playerName + " player data save was successful!");
+                    } catch (Exception e) {
+                        plugin.getLogger().warning("An error occurred while saving " + playerName + " player data.: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                });
+            } else {
+                plugin.getLogger().info(playerName + " has no items to save. Skipping save operation.");
+            }
         } catch (Exception e) {
             plugin.getLogger().warning("An error occurred while preparing " + playerName + " player data for save: " + e.getMessage());
             e.printStackTrace();
@@ -201,12 +280,97 @@ public class PlayerListener implements Listener {
         player.getInventory().setItemInOffHand(null);
 
         // エンダーチェストをクリア（設定で有効な場合のみ）
-        // 設定キーを "sync.enderchest" に修正し、他の場所と統一
         if (plugin.getServerSpecificConfig("sync-enderchest", true)) {
             player.getEnderChest().clear();
         }
 
         // インベントリの更新を強制
         player.updateInventory();
+    }
+
+    /**
+     * プレイヤーのデータをバックアップする
+     * クリア前にインベントリの状態を保存
+     */
+    private void backupPlayerData(Player player) {
+        UUID playerUUID = player.getUniqueId();
+        Map<String, Object> backup = new HashMap<>();
+
+        // インベントリの保存
+        if (player.getInventory() != null) {
+            Map<String, ItemStack[]> inventoryBackup = new HashMap<>();
+            inventoryBackup.put("contents", player.getInventory().getContents().clone());
+            inventoryBackup.put("armor", player.getInventory().getArmorContents().clone());
+            inventoryBackup.put("offhand", new ItemStack[]{player.getInventory().getItemInOffHand().clone()});
+            backup.put("inventory", inventoryBackup);
+        }
+
+        // エンダーチェストの保存
+        if (plugin.getServerSpecificConfig("sync-enderchest", true) && player.getEnderChest() != null) {
+            backup.put("enderchest", player.getEnderChest().getContents().clone());
+        }
+
+        // 経済データの保存
+        if (plugin.getEconomyManager().isEconomyEnabled()) {
+            backup.put("economy", plugin.getEconomyManager().getPlayerBalance(player));
+        }
+
+        // バックアップを保存
+        playerBackups.put(playerUUID, backup);
+        plugin.getLogger().fine("Backup created for player: " + player.getName());
+    }
+
+    /**
+     * バックアップからプレイヤーデータを復元する
+     */
+    private void restorePlayerDataFromBackup(Player player) {
+        UUID playerUUID = player.getUniqueId();
+
+        if (!playerBackups.containsKey(playerUUID)) {
+            plugin.getLogger().warning("No backup found for player: " + player.getName());
+            return;
+        }
+
+        Map<String, Object> backup = playerBackups.get(playerUUID);
+
+        try {
+            // インベントリの復元
+            if (backup.containsKey("inventory")) {
+                Map<String, ItemStack[]> inventoryBackup = (Map<String, ItemStack[]>) backup.get("inventory");
+
+                // メインコンテンツの復元
+                if (inventoryBackup.containsKey("contents")) {
+                    player.getInventory().setContents(inventoryBackup.get("contents"));
+                }
+
+                // アーマーの復元
+                if (inventoryBackup.containsKey("armor")) {
+                    player.getInventory().setArmorContents(inventoryBackup.get("armor"));
+                }
+
+                // オフハンドの復元
+                if (inventoryBackup.containsKey("offhand") && inventoryBackup.get("offhand").length > 0) {
+                    player.getInventory().setItemInOffHand(inventoryBackup.get("offhand")[0]);
+                }
+            }
+
+            // エンダーチェストの復元
+            if (backup.containsKey("enderchest") && plugin.getServerSpecificConfig("sync-enderchest", true)) {
+                player.getEnderChest().setContents((ItemStack[]) backup.get("enderchest"));
+            }
+
+            // 経済データの復元
+            if (backup.containsKey("economy") && plugin.getEconomyManager().isEconomyEnabled()) {
+                plugin.getEconomyManager().setPlayerBalance(player, (Double) backup.get("economy"));
+            }
+
+            // インベントリ更新を強制
+            player.updateInventory();
+
+            plugin.getLogger().info("Restored backup data for player: " + player.getName());
+        } catch (Exception e) {
+            plugin.getLogger().severe("Failed to restore backup for player: " + player.getName());
+            e.printStackTrace();
+        }
     }
 }
