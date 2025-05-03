@@ -115,6 +115,12 @@ public class EnderChestManager {
      * @return 適用が成功した場合はtrue、失敗した場合はfalse
      */
     public boolean applyEnderChestToPlayer(Player player, Object enderChestData) {
+        // 最初にnullチェックを行う
+        if (enderChestData == null) {
+            plugin.getLogger().warning("エンダーチェストデータがnullです。プレイヤー: " + player.getName());
+            return false;
+        }
+
         if (!(enderChestData instanceof ItemStack[])) {
             plugin.getLogger().warning("無効なエンダーチェストデータ形式です: " + enderChestData.getClass().getName());
             return false;

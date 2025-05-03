@@ -97,4 +97,29 @@ public class Inventory_Share extends JavaPlugin {
 
         getLogger().info("InventoryShare の設定を再読み込みしました。");
     }
+
+    /**
+     * サーバー固有の設定を取得するメソッド
+     * @param key 設定キー
+     * @param defaultValue デフォルト値
+     * @return 設定値
+     */
+    public boolean getServerSpecificConfig(String key, boolean defaultValue) {
+        String serverId = getConfig().getString("server-id", "");
+        if (serverId.isEmpty()) {
+            getLogger().warning("server-id が設定されていません。デフォルト値を使用します。");
+            return defaultValue;
+        }
+
+        // サーバー固有の設定パスを構築
+        String configPath = "servers." + serverId + "." + key;
+
+        // 設定が存在するか確認
+        if (getConfig().isSet(configPath)) {
+            return getConfig().getBoolean(configPath, defaultValue);
+        } else {
+            getLogger().warning("サーバー " + serverId + " の設定 " + key + " が見つかりません。デフォルト値を使用します。");
+            return defaultValue;
+        }
+    }
 }

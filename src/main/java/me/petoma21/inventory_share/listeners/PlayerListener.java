@@ -13,9 +13,14 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.HashSet;
+import java.util.Set;
 
 public class PlayerListener implements Listener {
     private final Inventory_Share plugin;
+
+    // 同期処理中のプレイヤーを追跡するためのセット
+    private final Set<UUID> syncingPlayers = new HashSet<>();
 
     public PlayerListener(Inventory_Share plugin) {
         this.plugin = plugin;
@@ -30,6 +35,9 @@ public class PlayerListener implements Listener {
         final Player player = event.getPlayer();
         final UUID playerUUID = player.getUniqueId();
 
+        // 同期処理中にマーク
+        syncingPlayers.add(playerUUID);
+
         // 最初にプレイヤーのインベントリをクリア（無限増殖バグ防止）
         clearPlayerInventory(player);
         player.sendMessage("§2[AIS] §aプレイヤーデータを同期中... 動かずにお待ちください");
@@ -39,10 +47,10 @@ public class PlayerListener implements Listener {
             @Override
             public void run() {
                 if (!player.isOnline()) {
+                    // プレイヤーがすでにオフラインの場合は同期フラグを解除
+                    syncingPlayers.remove(playerUUID);
                     return;
                 }
-
-
 
                 // 非同期でデータを読み込む
                 plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -54,7 +62,7 @@ public class PlayerListener implements Listener {
                         playerData.put("inventory", plugin.getInventoryManager().loadPlayerInventoryData(playerUUID));
 
                         // エンダーチェストデータを読み込み（設定で有効な場合のみ）
-                        if (plugin.getConfig().getBoolean("sync.enderchest", true)) {
+                        if (plugin.getServerSpecificConfig("sync-enderchest", true)) {
                             playerData.put("enderchest", plugin.getEnderChestManager().loadPlayerEnderChestData(playerUUID));
                         }
 
@@ -65,11 +73,13 @@ public class PlayerListener implements Listener {
 
                         // メインスレッドに戻ってデータを適用
                         plugin.getServer().getScheduler().runTask(plugin, () -> {
-                            if (!player.isOnline()) {
-                                return; // プレイヤーがすでにオフラインの場合は処理しない
-                            }
-
                             try {
+                                if (!player.isOnline()) {
+                                    // プレイヤーがすでにオフラインの場合は処理しない
+                                    syncingPlayers.remove(playerUUID);
+                                    return;
+                                }
+
                                 // インベントリを適用
                                 if (playerData.containsKey("inventory")) {
                                     plugin.getInventoryManager().applyInventoryToPlayer(player, playerData.get("inventory"));
@@ -85,8 +95,12 @@ public class PlayerListener implements Listener {
                                     plugin.getEconomyManager().applyBalanceToPlayer(player, playerData.get("economy"));
                                 }
 
+                                // 同期処理完了のマークを解除
+                                syncingPlayers.remove(playerUUID);
                                 player.sendMessage("§2[AIS] §aデータ同期完了!");
                             } catch (Exception e) {
+                                // エラー時も同期フラグを解除
+                                syncingPlayers.remove(playerUUID);
                                 player.sendMessage("§2[AIS] §cデータ同期中にエラーが発生しました。スタッフに報告してください！");
                                 plugin.getLogger().warning("Error applying player data for " + player.getName() + ": " + e.getMessage());
                                 e.printStackTrace();
@@ -95,6 +109,8 @@ public class PlayerListener implements Listener {
                     } catch (Exception e) {
                         // エラーが発生した場合、メインスレッドでエラーメッセージを表示
                         plugin.getServer().getScheduler().runTask(plugin, () -> {
+                            // エラー時も同期フラグを解除
+                            syncingPlayers.remove(playerUUID);
                             if (player.isOnline()) {
                                 player.sendMessage("§2[AIS] §cデータ同期中にエラーが発生しました。スタッフに報告してください！");
                             }
@@ -104,19 +120,27 @@ public class PlayerListener implements Listener {
                     }
                 });
             }
-//            同期開始までの待ち時間
+            // 同期開始までの待ち時間
         }.runTaskLater(plugin, 30L);
     }
 
     /**
      * プレイヤーがサーバーから退出したときのイベント
-     * インベントリ状態を非同期で保存
+     * インベントリ状態を非同期で保存（同期処理が完了している場合のみ）
      */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerQuit(PlayerQuitEvent event) {
         final Player player = event.getPlayer();
         final String playerName = player.getName();
         final UUID playerUUID = player.getUniqueId();
+
+        // 同期処理中であればデータの保存をスキップ
+        if (syncingPlayers.contains(playerUUID)) {
+            plugin.getLogger().info(playerName + " left during data synchronization. Skipping data save to prevent data loss.");
+            // 同期フラグを解除
+            syncingPlayers.remove(playerUUID);
+            return;
+        }
 
         try {
             // インベントリデータを退出前に取得
@@ -125,7 +149,7 @@ public class PlayerListener implements Listener {
             final ItemStack offHandItem = player.getInventory().getItemInOffHand().clone();
 
             // エンダーチェストデータを退出前に取得
-            final ItemStack[] enderChestContents = plugin.getConfig().getBoolean("sync.enderchest", true)
+            final ItemStack[] enderChestContents = plugin.getServerSpecificConfig("sync-enderchest", true)
                     ? player.getEnderChest().getContents().clone() : null;
 
             // 所持金データを退出前に取得
@@ -142,7 +166,7 @@ public class PlayerListener implements Listener {
                     plugin.getInventoryManager().savePlayerInventoryData(playerUUID, inventoryContents, armorContents, offHandItem);
 
                     // エンダーチェストの保存（設定で有効な場合のみ）
-                    if (plugin.getConfig().getBoolean("sync.enderchest", true) && enderChestContents != null) {
+                    if (plugin.getConfig().getBoolean("sync-enderchest", true) && enderChestContents != null) {
                         plugin.getEnderChestManager().savePlayerEnderChestData(playerUUID, enderChestContents);
                     }
 
@@ -175,10 +199,13 @@ public class PlayerListener implements Listener {
         player.getInventory().setArmorContents(new ItemStack[4]);
         // オフハンドをクリア
         player.getInventory().setItemInOffHand(null);
+
         // エンダーチェストをクリア（設定で有効な場合のみ）
-        if (plugin.getConfig().getBoolean("sync.enderchest", true)) {
+        // 設定キーを "sync.enderchest" に修正し、他の場所と統一
+        if (plugin.getServerSpecificConfig("sync-enderchest", true)) {
             player.getEnderChest().clear();
         }
+
         // インベントリの更新を強制
         player.updateInventory();
     }
