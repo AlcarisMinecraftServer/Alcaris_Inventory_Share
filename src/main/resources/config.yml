@@ -15,10 +15,10 @@ database:
 # 共有グループ設定
 # 同じグループに属するサーバー間でインベントリが共有されます
 sharing-groups:
-  survival:
+  example1:
     - "server1"
     - "server2"
-  creative:
+  example2:
     - "server3"
     - "server4"
 
@@ -39,3 +39,10 @@ servers:
   server4:
     sync-enderchest: true
     sync-economy: false
+
+sync:
+  # 同期完了時のサウンド設定
+  sync-completion-sound-enabled: true
+  sync-completion-sound: "ENTITY_PLAYER_LEVELUP"
+  sync-completion-sound-volume: 1.0
+  sync-completion-sound-pitch: 1.0

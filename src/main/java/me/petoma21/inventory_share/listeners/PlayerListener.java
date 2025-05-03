@@ -1,6 +1,7 @@
 package me.petoma21.inventory_share.listeners;
 
 import me.petoma21.inventory_share.Inventory_Share;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -138,6 +139,9 @@ public class PlayerListener implements Listener {
                                 // 同期処理完了のマークを解除
                                 syncingPlayers.remove(playerUUID);
                                 player.sendMessage("§2[AIS] §aデータ同期完了!");
+
+                                // 同期完了サウンドを再生（設定で有効な場合のみ）
+                                playCompletionSound(player);
                             } catch (Exception e) {
                                 // エラー時はバックアップから復元を試みる
                                 restorePlayerDataFromBackup(player);
@@ -170,6 +174,36 @@ public class PlayerListener implements Listener {
             }
             // 同期開始までの待ち時間
         }.runTaskLater(plugin, 30L);
+    }
+
+    /**
+     * 同期完了時にサウンドを再生する
+     * configで設定された値に基づいて再生
+     */
+    private void playCompletionSound(Player player) {
+        // サウンド設定が有効かどうか確認
+        if (plugin.getServerSpecificConfig("sync-completion-sound-enabled", true)) {
+            try {
+                // configから設定を取得
+                String soundName = plugin.getServerSpecificConfig("sync-completion-sound", "ENTITY_PLAYER_LEVELUP");
+                float volume = ((Double) plugin.getServerSpecificConfig("sync-completion-sound-volume", 1.0)).floatValue();
+                float pitch = ((Double) plugin.getServerSpecificConfig("sync-completion-sound-pitch", 1.0)).floatValue();
+                // 文字列からサウンド列挙型に変換
+                Sound sound;
+                try {
+                    sound = Sound.valueOf(soundName);
+                } catch (IllegalArgumentException e) {
+                    // 無効なサウンド名の場合はデフォルトサウンドを使用
+                    plugin.getLogger().warning("Invalid sound name in config: " + soundName + ". Using default sound.");
+                    sound = Sound.ENTITY_PLAYER_LEVELUP;
+                }
+
+                // サウンドを再生
+                player.playSound(player.getLocation(), sound, volume, pitch);
+            } catch (Exception e) {
+                plugin.getLogger().warning("Error playing completion sound: " + e.getMessage());
+            }
+        }
     }
 
     /**
@@ -232,8 +266,6 @@ public class PlayerListener implements Listener {
 
             // アイテムがある場合のみ保存処理を実行
             if (hasItems) {
-
-//まず保存してもらう
                 // 非同期でデータを保存
                 plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
                     try {
@@ -256,10 +288,6 @@ public class PlayerListener implements Listener {
                         plugin.getLogger().warning("An error occurred while saving " + playerName + " player data.: " + e.getMessage());
                         e.printStackTrace();
                     }
-
-// 最後にインベントリをクリア
-                    clearPlayerInventory(player);
-
                 });
             } else {
                 plugin.getLogger().info(playerName + " has no items to save. Skipping save operation.");

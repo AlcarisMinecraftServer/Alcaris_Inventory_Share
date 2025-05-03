@@ -16,6 +16,7 @@ public class Inventory_Share extends JavaPlugin {
     private EnderChestManager enderChestManager;
     private EconomyManager economyManager;
     private InventoryListener inventoryListener;
+
     @Override
     public void onEnable() {
         // インスタンスを保存
@@ -108,7 +109,16 @@ public class Inventory_Share extends JavaPlugin {
      * @param defaultValue デフォルト値
      * @return 設定値
      */
-    public boolean getServerSpecificConfig(String key, boolean defaultValue) {
+    /**
+     * サーバー固有の設定を取得する汎用メソッド（ジェネリック型）
+     *
+     * @param <T>          戻り値の型
+     * @param path         設定パス
+     * @param defaultValue デフォルト値
+     * @return 設定値
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T getServerSpecificConfig(String path, T defaultValue) {
         String serverId = getConfig().getString("server-id", "");
         if (serverId.isEmpty()) {
             getLogger().warning("server-id が設定されていません。デフォルト値を使用します。");
@@ -116,14 +126,89 @@ public class Inventory_Share extends JavaPlugin {
         }
 
         // サーバー固有の設定パスを構築
-        String configPath = "servers." + serverId + "." + key;
+        String configPath = "servers." + serverId + "." + path;
 
-        // 設定が存在するか確認
+        // グローバル設定のパス
+        String globalPath = "sync." + path;
+
+        // 優先順位：1. サーバー固有設定、2. グローバル設定、3. デフォルト値
         if (getConfig().isSet(configPath)) {
-            return getConfig().getBoolean(configPath, defaultValue);
-        } else {
-            getLogger().warning("サーバー " + serverId + " の設定 " + key + " が見つかりません。デフォルト値を使用します。");
-            return defaultValue;
+            Object value = getConfig().get(configPath);
+            if (value != null && defaultValue != null && value.getClass().isInstance(defaultValue)) {
+                return (T) value;
+            } else if (value != null) {
+                try {
+                    // 数値型の変換を試みる
+                    if (defaultValue instanceof Number) {
+                        if (defaultValue instanceof Double) {
+                            return (T) Double.valueOf(getConfig().getDouble(configPath));
+                        } else if (defaultValue instanceof Float) {
+                            return (T) Float.valueOf((float) getConfig().getDouble(configPath));
+                        } else if (defaultValue instanceof Integer) {
+                            return (T) Integer.valueOf(getConfig().getInt(configPath));
+                        } else if (defaultValue instanceof Long) {
+                            return (T) Long.valueOf(getConfig().getLong(configPath));
+                        }
+                    }
+                    // 文字列型の場合
+                    else if (defaultValue instanceof String) {
+                        return (T) getConfig().getString(configPath);
+                    }
+                    // boolean型の場合
+                    else if (defaultValue instanceof Boolean) {
+                        return (T) Boolean.valueOf(getConfig().getBoolean(configPath));
+                    }
+                } catch (Exception e) {
+                    getLogger().warning("設定値 " + configPath + " の型変換に失敗しました: " + e.getMessage());
+                }
+            }
         }
+
+        // サーバー固有設定がない場合はグローバル設定を確認
+        if (getConfig().isSet(globalPath)) {
+            Object value = getConfig().get(globalPath);
+            if (value != null && defaultValue != null && value.getClass().isInstance(defaultValue)) {
+                return (T) value;
+            } else if (value != null) {
+                try {
+                    // 数値型の変換を試みる
+                    if (defaultValue instanceof Number) {
+                        if (defaultValue instanceof Double) {
+                            return (T) Double.valueOf(getConfig().getDouble(globalPath));
+                        } else if (defaultValue instanceof Float) {
+                            return (T) Float.valueOf((float) getConfig().getDouble(globalPath));
+                        } else if (defaultValue instanceof Integer) {
+                            return (T) Integer.valueOf(getConfig().getInt(globalPath));
+                        } else if (defaultValue instanceof Long) {
+                            return (T) Long.valueOf(getConfig().getLong(globalPath));
+                        }
+                    }
+                    // 文字列型の場合
+                    else if (defaultValue instanceof String) {
+                        return (T) getConfig().getString(globalPath);
+                    }
+                    // boolean型の場合
+                    else if (defaultValue instanceof Boolean) {
+                        return (T) Boolean.valueOf(getConfig().getBoolean(globalPath));
+                    }
+                } catch (Exception e) {
+                    getLogger().warning("設定値 " + globalPath + " の型変換に失敗しました: " + e.getMessage());
+                }
+            }
+        }
+
+        // どちらの設定も見つからない場合はデフォルト値を使用
+        return defaultValue;
+    }
+
+    /**
+     * boolean型のサーバー固有設定を取得する（後方互換性のため）
+     *
+     * @param key          設定キー
+     * @param defaultValue デフォルト値
+     * @return boolean設定値
+     */
+    public boolean getServerSpecificConfig(String key, boolean defaultValue) {
+        return getServerSpecificConfig(key, Boolean.valueOf(defaultValue));
     }
 }
