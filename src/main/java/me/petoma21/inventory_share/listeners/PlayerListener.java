@@ -32,7 +32,7 @@ public class PlayerListener implements Listener {
 
         // 最初にプレイヤーのインベントリをクリア（無限増殖バグ防止）
         clearPlayerInventory(player);
-
+        player.sendMessage("§2[AIS] §aプレイヤーデータを同期中... 動かずにお待ちください");
         // ログイン時はわずかに遅らせてインベントリを同期
         // 他のプラグインによるインベントリ操作の影響を避けるため
         new BukkitRunnable() {
@@ -42,7 +42,7 @@ public class PlayerListener implements Listener {
                     return;
                 }
 
-                player.sendMessage("§2[AIS] §aプレイヤーデータを同期中...");
+
 
                 // 非同期でデータを読み込む
                 plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -87,7 +87,7 @@ public class PlayerListener implements Listener {
 
                                 player.sendMessage("§2[AIS] §aデータ同期完了!");
                             } catch (Exception e) {
-                                player.sendMessage("§4[AIS] §cデータ同期中にエラーが発生しました");
+                                player.sendMessage("§2[AIS] §cデータ同期中にエラーが発生しました。スタッフに報告してください！");
                                 plugin.getLogger().warning("Error applying player data for " + player.getName() + ": " + e.getMessage());
                                 e.printStackTrace();
                             }
@@ -96,7 +96,7 @@ public class PlayerListener implements Listener {
                         // エラーが発生した場合、メインスレッドでエラーメッセージを表示
                         plugin.getServer().getScheduler().runTask(plugin, () -> {
                             if (player.isOnline()) {
-                                player.sendMessage("§4[AIS] §cデータ同期中にエラーが発生しました");
+                                player.sendMessage("§2[AIS] §cデータ同期中にエラーが発生しました。スタッフに報告してください！");
                             }
                             plugin.getLogger().warning("Error loading player data for " + player.getName() + ": " + e.getMessage());
                             e.printStackTrace();
@@ -104,7 +104,8 @@ public class PlayerListener implements Listener {
                     }
                 });
             }
-        }.runTaskLater(plugin, 20L);
+//            同期開始までの待ち時間
+        }.runTaskLater(plugin, 30L);
     }
 
     /**
