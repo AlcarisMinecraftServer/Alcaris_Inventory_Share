@@ -1,13 +1,8 @@
 package me.petoma21.inventory_share.listeners;
 
 import me.petoma21.inventory_share.Inventory_Share;
-import me.petoma21.inventory_share.listeners.PlayerListener;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 

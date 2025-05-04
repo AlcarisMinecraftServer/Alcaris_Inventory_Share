@@ -1,7 +1,5 @@
 package me.petoma21.inventory_share;
 
-import org.bukkit.Bukkit;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import me.petoma21.inventory_share.commands.ReloadCommand;
 import me.petoma21.inventory_share.listeners.InventoryListener;
@@ -31,7 +29,7 @@ public class Inventory_Share extends JavaPlugin {
         if (!databaseManager.connect()) {
             getLogger().severe("===============================================");
             getLogger().severe("========== データベース接続に失敗しました ==========");
-            getLogger().severe("==========　 サーバーの軌道を停止します 　==========");
+            getLogger().severe("==========　 サーバーの起動を停止します 　==========");
             getLogger().severe("===============================================");
             getServer().shutdown();
             return;
