@@ -2,12 +2,17 @@ package me.petoma21.inventory_share.listeners;
 
 import me.petoma21.inventory_share.Inventory_Share;
 import org.bukkit.Sound;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent; // アイテム拾得イベント
+import org.bukkit.event.inventory.InventoryClickEvent; // インベントリ操作イベント
+import org.bukkit.event.player.PlayerDropItemEvent; // アイテムドロップイベント
+import org.bukkit.event.inventory.InventoryCloseEvent; // インベントリクローズイベント
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -114,6 +119,8 @@ public class PlayerListener implements Listener {
 
                                 // データが読み込めた場合のみ適用する
                                 if (hasData) {
+                                    // item全ドロップ処理
+                                    dropAllItems(player);
                                     // インベントリを適用
                                     if (playerData.containsKey("inventory")) {
                                         plugin.getInventoryManager().applyInventoryToPlayer(player, playerData.get("inventory"));
@@ -404,4 +411,64 @@ public class PlayerListener implements Listener {
             e.printStackTrace();
         }
     }
+
+    /**
+     * 同期中にプレイヤーがアイテムを拾うのを防止する
+     */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onItemPickup(EntityPickupItemEvent event) {
+        // プレイヤーがアイテムを拾った場合のみ処理
+        if (!(event.getEntity() instanceof Player)) {
+            return;
+        }
+
+        Player player = (Player) event.getEntity();
+        UUID playerUUID = player.getUniqueId();
+
+        // 同期中の場合はアイテム拾得をキャンセル
+        if (syncingPlayers.contains(playerUUID)) {
+            event.setCancelled(true);
+        }
+    }
+//
+//     * プレイヤーのインベントリ内のすべてのアイテムをドロップする
+    public boolean dropAllItems(Player player) {
+        // プレイヤーの場所を取得
+        Location dropLocation = player.getLocation();
+        boolean itemsFound = false;
+
+        // インベントリ内のアイテムをすべてチェック
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item != null && !item.getType().isAir()) {
+                // アイテムをドロップ
+                player.getWorld().dropItemNaturally(dropLocation, item);
+                itemsFound = true;
+            }
+        }
+
+        // アーマースロットのアイテムをチェック
+        for (ItemStack armor : player.getInventory().getArmorContents()) {
+            if (armor != null && !armor.getType().isAir()) {
+                player.getWorld().dropItemNaturally(dropLocation, armor);
+                itemsFound = true;
+            }
+        }
+
+        // オフハンドのアイテムをチェック
+        ItemStack offhand = player.getInventory().getItemInOffHand();
+        if (offhand != null && !offhand.getType().isAir()) {
+            player.getWorld().dropItemNaturally(dropLocation, offhand);
+            itemsFound = true;
+        }
+
+        // アイテムが見つかった場合、インベントリをクリアして通知
+        if (itemsFound) {
+            clearPlayerInventory(player);
+            player.sendMessage("§2[AIS] §c同期中に所持したアイテムは足元にドロップされました。");
+        }
+
+        return itemsFound;
+    }
+
+
 }
