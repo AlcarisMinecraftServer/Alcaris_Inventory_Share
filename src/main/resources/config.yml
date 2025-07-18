@@ -1,10 +1,9 @@
-# InventoryShare プラグイン設定ファイル
-
 # このサーバーのID (任意のID)
 server-id: "server1"
 
 # データベース設定
 database:
+  type: mysql # または mariadb
   host: "localhost"
   port: 3306
   name: "minecraft_inventory"
@@ -13,7 +12,7 @@ database:
   useSSL: false
 
 # 共有グループ設定
-# 同じグループに属するサーバー間でインベントリが共有されます
+# 同じグループに属するサーバー間でインベントリが共有される
 sharing-groups:
   example1:
     - "server1"

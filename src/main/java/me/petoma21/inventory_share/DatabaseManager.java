@@ -5,7 +5,6 @@ import org.bukkit.util.io.BukkitObjectInputStream;
 import org.bukkit.util.io.BukkitObjectOutputStream;
 import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -17,6 +16,7 @@ public class DatabaseManager {
 
     private final Inventory_Share plugin;
     private Connection connection;
+    private String dbType; // "mysql" or "mariadb"
 
     public DatabaseManager(Inventory_Share plugin) {
         this.plugin = plugin;
@@ -28,17 +28,57 @@ public class DatabaseManager {
      */
     public boolean connect() {
         Config config = plugin.getPluginConfig();
-        String url = "jdbc:mysql://" + config.getDbHost() + ":" + config.getDbPort() + "/" + config.getDbName() +
-                "?useSSL=" + config.isDbUseSSL() + "&useUnicode=true&characterEncoding=utf8";
+        this.dbType = config.getDbType().toLowerCase(); // 設定からデータベースタイプを取得
+
+        String url = buildConnectionUrl(config);
 
         try {
+            // データベースタイプに応じてドライバーを選択
+            if ("mariadb".equals(dbType)) {
+                // MariaDB専用ドライバーを試す
+                try {
+                    Class.forName("org.mariadb.jdbc.Driver");
+                    plugin.getLogger().info("MariaDB JDBCドライバーを使用します");
+                } catch (ClassNotFoundException e) {
+                    // MariaDBドライバーが見つからない場合はMySQLドライバーを使用
+                    plugin.getLogger().warning("MariaDB JDBCドライバーが見つかりません。MySQL JDBCドライバーを使用します");
+                    Class.forName("com.mysql.cj.jdbc.Driver");
+                }
+            } else {
+                // MySQLドライバーを使用
+                Class.forName("com.mysql.cj.jdbc.Driver");
+                plugin.getLogger().info("MySQL JDBCドライバーを使用します");
+            }
+
             connection = DriverManager.getConnection(url, config.getDbUser(), config.getDbPassword());
             createTables();
+            plugin.getLogger().info("データベース接続に成功しました (" + dbType + ")");
             return true;
-        } catch (SQLException e) {
+        } catch (SQLException | ClassNotFoundException e) {
             plugin.getLogger().log(Level.SEVERE, "データベース接続エラー: " + e.getMessage(), e);
             return false;
         }
+    }
+
+    /**
+     * データベースタイプに応じて接続URLを構築します
+     */
+    private String buildConnectionUrl(Config config) {
+        String baseUrl;
+
+        if ("mariadb".equals(dbType)) {
+            baseUrl = "jdbc:mariadb://" + config.getDbHost() + ":" + config.getDbPort() + "/" + config.getDbName();
+        } else {
+            baseUrl = "jdbc:mysql://" + config.getDbHost() + ":" + config.getDbPort() + "/" + config.getDbName();
+        }
+
+        // 共通パラメータ
+        String params = "?useSSL=" + config.isDbUseSSL() +
+                "&useUnicode=true&characterEncoding=utf8" +
+                "&serverTimezone=UTC" + // タイムゾーン設定
+                "&allowPublicKeyRetrieval=true"; // 公開鍵の取得を許可
+
+        return baseUrl + params;
     }
 
     /**
@@ -56,11 +96,13 @@ public class DatabaseManager {
         try {
             if (connection != null && !connection.isClosed()) {
                 connection.close();
+                plugin.getLogger().info("データベース接続を閉じました");
             }
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "データベース切断エラー: " + e.getMessage(), e);
         }
     }
+
     /**
      * データベース接続が有効かどうかチェックします
      * @return 接続が有効な場合はtrue、無効な場合はfalse
@@ -95,12 +137,21 @@ public class DatabaseManager {
             return false;
         }
     }
+
     /**
      * 必要なテーブルを作成します
      */
     private void createTables() throws SQLException {
-        // インベントリテーブル
+        // データベースエンジンの設定（MariaDBとMySQLで互換性を保つ）
+        String engineClause = "";
+        if ("mariadb".equals(dbType)) {
+            engineClause = " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        } else {
+            engineClause = " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        }
+
         try (Statement statement = connection.createStatement()) {
+            // インベントリテーブル
             statement.executeUpdate(
                     "CREATE TABLE IF NOT EXISTS inventory_data (" +
                             "uuid VARCHAR(36) NOT NULL, " +
@@ -108,7 +159,7 @@ public class DatabaseManager {
                             "inventory LONGTEXT, " +
                             "last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, " +
                             "PRIMARY KEY (uuid, server_group)" +
-                            ")"
+                            ")" + engineClause
             );
 
             // エンダーチェストテーブル
@@ -119,7 +170,7 @@ public class DatabaseManager {
                             "enderchest LONGTEXT, " +
                             "last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, " +
                             "PRIMARY KEY (uuid, server_group)" +
-                            ")"
+                            ")" + engineClause
             );
 
             // 経済データテーブル
@@ -130,9 +181,35 @@ public class DatabaseManager {
                             "balance DECIMAL(16,2) DEFAULT 0, " +
                             "last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, " +
                             "PRIMARY KEY (uuid, server_group)" +
-                            ")"
+                            ")" + engineClause
             );
+
+            plugin.getLogger().info("データベーステーブルの作成/確認が完了しました");
         }
+    }
+
+    /**
+     * 使用中のデータベースタイプを取得します
+     * @return データベースタイプ ("mysql" または "mariadb")
+     */
+    public String getDbType() {
+        return dbType;
+    }
+
+    /**
+     * データベース情報を取得します
+     * @return データベース製品名とバージョン
+     */
+    public String getDatabaseInfo() {
+        try {
+            if (connection != null && !connection.isClosed()) {
+                DatabaseMetaData metaData = connection.getMetaData();
+                return metaData.getDatabaseProductName() + " " + metaData.getDatabaseProductVersion();
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "データベース情報の取得エラー: " + e.getMessage(), e);
+        }
+        return "Unknown";
     }
 
     /**
