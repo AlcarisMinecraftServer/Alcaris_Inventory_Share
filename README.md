@@ -2,6 +2,8 @@
 A plugin for sharing player data between servers using a database.  
 It can synchronize inventory, ender chest, and economy data from Vault-compatible plugins.
 
+**Tested Minecraft Version:** 1.21.1
+<br>(日本語の説明は[こちら](JP_README.md)からご覧になれます。)
 # How to Use
 **① Install this plugin on all servers where you want to share data.**  
 <br>On the first launch after installation, the server will shut down once because the database settings are not configured yet.
