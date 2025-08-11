@@ -1,4 +1,4 @@
-# このサーバーのID (任意のID)
+# サーバーのID (任意のID)
 server-id: "server1"
 
 # データベース設定
@@ -18,8 +18,8 @@ sharing-groups:
     - "server1"
     - "server2"
   example2:
+    - "server1"
     - "server3"
-    - "server4"
 
 # 各サーバーの設定
 servers:
@@ -32,16 +32,12 @@ servers:
     sync-economy: true
 
   server3:
-    sync-enderchest: false
-    sync-economy: true
-
-  server4:
     sync-enderchest: true
-    sync-economy: false
+    sync-economy: true
 
 sync:
   # 同期完了時のサウンド設定
   sync-completion-sound-enabled: true
   sync-completion-sound: "ENTITY_PLAYER_LEVELUP"
-  sync-completion-sound-volume: 1.0
+  sync-completion-sound-volume: 0.5
   sync-completion-sound-pitch: 1.0
