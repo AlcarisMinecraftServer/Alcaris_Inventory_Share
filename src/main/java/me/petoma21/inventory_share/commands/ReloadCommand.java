@@ -28,7 +28,7 @@ public class ReloadCommand implements CommandExecutor {
 
         // プラグインをリロード
         plugin.reload();
-        sender.sendMessage(ChatColor.GREEN + "InventoryShare の設定を再読み込みしました。");
+        sender.sendMessage(ChatColor.GREEN + "PIS の設定を再読み込みしました。");
         return true;
     }
 }

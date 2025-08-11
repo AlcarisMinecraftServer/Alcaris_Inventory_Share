@@ -18,10 +18,6 @@ public class InventoryManager {
         this.plugin = plugin;
     }
 
-    /**
-     * プレイヤーのインベントリを保存します
-     * @param player 保存対象のプレイヤー
-     */
     public void savePlayerInventory(Player player) {
         final UUID playerUUID = player.getUniqueId();
         final ItemStack[] inventoryContents = player.getInventory().getContents();
@@ -31,13 +27,6 @@ public class InventoryManager {
         savePlayerInventoryData(playerUUID, inventoryContents, armorContents, offHandItem);
     }
 
-    /**
-     * プレイヤーのインベントリデータを保存します (非同期処理用)
-     * @param playerUUID プレイヤーのUUID
-     * @param inventoryContents インベントリの内容
-     * @param armorContents 防具の内容
-     * @param offHandItem オフハンドのアイテム
-     */
     public void savePlayerInventoryData(UUID playerUUID, ItemStack[] inventoryContents, ItemStack[] armorContents, ItemStack offHandItem) {
         final String serverId = plugin.getPluginConfig().getServerId();
 
@@ -57,11 +46,6 @@ public class InventoryManager {
         }
     }
 
-    /**
-     * プレイヤーのインベントリをロードします
-     * @param player ロード対象のプレイヤー
-     * @return インベントリが見つかってロードされた場合はtrue、それ以外はfalse
-     */
     public boolean loadPlayerInventory(Player player) {
         Object inventoryData = loadPlayerInventoryData(player.getUniqueId());
         if (inventoryData == null) {
@@ -71,11 +55,6 @@ public class InventoryManager {
         return applyInventoryToPlayer(player, inventoryData);
     }
 
-    /**
-     * プレイヤーのインベントリデータをロードします (非同期処理用)
-     * @param playerUUID ロード対象のプレイヤーUUID
-     * @return ロードされたインベントリデータ、見つからない場合はnull
-     */
     public Object loadPlayerInventoryData(UUID playerUUID) {
         final String serverId = plugin.getPluginConfig().getServerId();
 
@@ -97,16 +76,10 @@ public class InventoryManager {
             return null;
         }
 
-        plugin.getLogger().info(playerUUID + " のインベントリをグループ " + primaryGroup + " からロードしました。");
+//        plugin.getLogger().info(playerUUID + " のインベントリをグループ " + primaryGroup + " からロードしました。");
         return inventoryContents;
     }
 
-    /**
-     * ロードされたインベントリデータをプレイヤーに適用します (非同期処理用)
-     * @param player データを適用するプレイヤー
-     * @param inventoryData ロードされたインベントリデータ
-     * @return 適用が成功した場合はtrue、失敗した場合はfalse
-     */
     public boolean applyInventoryToPlayer(Player player, Object inventoryData) {
         if (!(inventoryData instanceof ItemStack[])) {
             plugin.getLogger().warning("無効なインベントリデータ形式です: " + inventoryData.getClass().getName());
@@ -125,22 +98,12 @@ public class InventoryManager {
         }
     }
 
-    /**
-     * プレイヤーにインベントリ同期通知を送信します
-     * @param player 通知を送るプレイヤー
-     */
     private void sendSyncNotification(Player player) {
         FileConfiguration config = plugin.getConfig();
         String message = config.getString("messages.inventory-synchronized", "&aインベントリが他のサーバーと同期されました。");
         player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
     }
 
-    /**
-     * プレイヤーのインベントリを特定のグループの最新データで更新します
-     * @param player 更新対象のプレイヤー
-     * @param groupName 更新元のグループ名
-     * @return 更新成功時はtrue、失敗時はfalse
-     */
     public boolean updatePlayerInventory(Player player, String groupName) {
         final UUID playerUUID = player.getUniqueId();
 
@@ -166,9 +129,6 @@ public class InventoryManager {
         }
     }
 
-    /**
-     * 全プレイヤーのインベントリを保存します
-     */
     public void saveAllPlayerInventories() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             savePlayerInventory(player);

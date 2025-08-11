@@ -50,7 +50,7 @@ public class Inventory_Share extends JavaPlugin {
         // コマンドの登録
         getCommand("isreload").setExecutor(new ReloadCommand(this));
 
-        getLogger().info("InventoryShare プラグインが有効になりました。");
+        getLogger().info("PetoInventoryShare プラグインが有効になりました。");
     }
 
     @Override
@@ -62,7 +62,7 @@ public class Inventory_Share extends JavaPlugin {
         if (inventoryListener != null) {
             inventoryListener.shutdown();
         }
-        getLogger().info("InventoryShare プラグインが無効になりました。");
+        getLogger().info("PetoInventoryShare プラグインが無効になりました。");
     }
 
     public static Inventory_Share getInstance() {
@@ -99,22 +99,9 @@ public class Inventory_Share extends JavaPlugin {
             databaseManager.reconnect();
         }
 
-        getLogger().info("InventoryShare の設定を再読み込みしました。");
+        getLogger().info("PIS の設定を再読み込みしました。");
     }
 
-    /**
-     * @param key 設定キー
-     * @param defaultValue デフォルト値
-     * @return 設定値
-     */
-    /**
-     * サーバー固有の設定を取得する汎用メソッド（ジェネリック型）
-     *
-     * @param <T>          戻り値の型
-     * @param path         設定パス
-     * @param defaultValue デフォルト値
-     * @return 設定値
-     */
     @SuppressWarnings("unchecked")
     public <T> T getServerSpecificConfig(String path, T defaultValue) {
         String serverId = getConfig().getString("server-id", "");
@@ -199,13 +186,6 @@ public class Inventory_Share extends JavaPlugin {
         return defaultValue;
     }
 
-    /**
-     * boolean型のサーバー固有設定を取得する（後方互換性のため）
-     *
-     * @param key          設定キー
-     * @param defaultValue デフォルト値
-     * @return boolean設定値
-     */
     public boolean getServerSpecificConfig(String key, boolean defaultValue) {
         return getServerSpecificConfig(key, Boolean.valueOf(defaultValue));
     }

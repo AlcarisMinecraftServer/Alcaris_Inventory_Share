@@ -16,10 +16,6 @@ public class InventoryListener implements Listener {
         this.plugin = plugin;
         startAutoSaveTask();
     }
-
-    /**
-     * 5分ごとに全プレイヤーのインベントリとエンダーチェストを自動保存する非同期タスクを開始
-     */
     private void startAutoSaveTask() {
         // 以前に実行されていたタスクがあればキャンセル
         if (autoSaveTask != null) {
@@ -59,9 +55,7 @@ public class InventoryListener implements Listener {
         }.runTaskTimer(plugin, 6000, 6000); // 5分(6000 ticks)ごとに実行
     }
 
-    /**
-     * プラグイン無効化時にタスクをキャンセル
-     */
+
     public void shutdown() {
         if (autoSaveTask != null) {
             autoSaveTask.cancel();

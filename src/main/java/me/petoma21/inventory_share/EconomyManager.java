@@ -21,9 +21,6 @@ public class EconomyManager {
         setupEconomy();
     }
 
-    /**
-     * Vaultを通じて経済プラグインを設定します
-     */
     private void setupEconomy() {
         if (Bukkit.getPluginManager().getPlugin("Vault") == null) {
             plugin.getLogger().warning("Vault プラグインが見つかりません。経済機能は無効です。");
@@ -41,10 +38,6 @@ public class EconomyManager {
         plugin.getLogger().info("Vault を通じて経済プラグインと連携しました: " + economy.getName());
     }
 
-    /**
-     * プレイヤーの所持金を保存します
-     * @param player 保存対象のプレイヤー
-     */
     public void savePlayerBalance(Player player) {
         if (!economyEnabled) {
             return;
@@ -54,11 +47,6 @@ public class EconomyManager {
         savePlayerBalanceData(player.getUniqueId(), balance);
     }
 
-    /**
-     * プレイヤーの所持金を取得します
-     * @param player 対象のプレイヤー
-     * @return プレイヤーの所持金
-     */
     public double getPlayerBalance(Player player) {
         if (!economyEnabled) {
             return 0.0;
@@ -66,11 +54,6 @@ public class EconomyManager {
         return economy.getBalance(player);
     }
 
-    /**
-     * プレイヤーの所持金データを保存します (非同期処理用)
-     * @param playerUUID プレイヤーのUUID
-     * @param balance 所持金
-     */
     public void savePlayerBalanceData(UUID playerUUID, double balance) {
         if (!economyEnabled) {
             return;
@@ -100,11 +83,6 @@ public class EconomyManager {
         }
     }
 
-    /**
-     * プレイヤーの所持金をロードします
-     * @param player ロード対象のプレイヤー
-     * @return 所持金が見つかってロードされた場合はtrue、それ以外はfalse
-     */
     public boolean loadPlayerBalance(Player player) {
         if (!economyEnabled) {
             return false;
@@ -118,11 +96,6 @@ public class EconomyManager {
         return applyBalanceToPlayer(player, balanceData);
     }
 
-    /**
-     * プレイヤーの所持金データをロードします (非同期処理用)
-     * @param playerUUID ロード対象のプレイヤーUUID
-     * @return ロードされた所持金データ (Double型)、見つからない場合はnull
-     */
     public Object loadPlayerBalanceData(UUID playerUUID) {
         if (!economyEnabled) {
             return null;
@@ -149,16 +122,10 @@ public class EconomyManager {
         String primaryGroup = groups.get(0);
         double balance = plugin.getDatabaseManager().loadEconomy(playerUUID, primaryGroup);
 
-        plugin.getLogger().info(playerUUID + " の所持金 " + balance + " をグループ " + primaryGroup + " からロードしました。");
+//        plugin.getLogger().info(playerUUID + " の所持金 " + balance + " をグループ " + primaryGroup + " からロードしました。");
         return balance;
     }
 
-    /**
-     * ロードされた所持金データをプレイヤーに適用します (非同期処理用)
-     * @param player データを適用するプレイヤー
-     * @param balanceData ロードされた所持金データ (Double型)
-     * @return 適用が成功した場合はtrue、失敗した場合はfalse
-     */
     public boolean applyBalanceToPlayer(Player player, Object balanceData) {
         if (!economyEnabled) {
             return false;
@@ -192,12 +159,6 @@ public class EconomyManager {
         }
     }
 
-    /**
-     * プレイヤーの所持金を特定のグループの最新データで更新します
-     * @param player 更新対象のプレイヤー
-     * @param groupName 更新元のグループ名
-     * @return 更新成功時はtrue、失敗時はfalse
-     */
     public boolean updatePlayerBalance(Player player, String groupName) {
         if (!economyEnabled) {
             return false;
@@ -236,12 +197,7 @@ public class EconomyManager {
             return false;
         }
     }
-    /**
-     * プレイヤーの所持金を直接設定する
-     * @param player 対象プレイヤー
-     * @param amount 設定する金額
-     * @return 設定に成功したかどうか
-     */
+
     public boolean setPlayerBalance(Player player, double amount) {
         if (!isEconomyEnabled() || player == null) {
             return false;
@@ -259,13 +215,10 @@ public class EconomyManager {
             }
             return false;
         } catch (Exception e) {
-            Bukkit.getLogger().warning("[InventoryShare] Failed to set player balance for " + player.getName() + ": " + e.getMessage());
+            Bukkit.getLogger().warning("[PIS] Failed to set player balance for " + player.getName() + ": " + e.getMessage());
             return false;
         }
     }
-    /**
-     * 全プレイヤーの所持金を保存します
-     */
     public void saveAllPlayerBalances() {
         if (!economyEnabled) {
             return;
@@ -276,18 +229,10 @@ public class EconomyManager {
         }
     }
 
-    /**
-     * 経済機能が有効か確認します
-     * @return 経済機能が有効な場合はtrue
-     */
     public boolean isEconomyEnabled() {
         return economyEnabled;
     }
 
-    /**
-     * 経済プラグイン名を取得します
-     * @return 経済プラグイン名、無効な場合は"None"
-     */
     public String getEconomyName() {
         return economyEnabled ? economy.getName() : "None";
     }

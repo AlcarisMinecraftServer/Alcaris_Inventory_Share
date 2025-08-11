@@ -22,10 +22,6 @@ public class DatabaseManager {
         this.plugin = plugin;
     }
 
-    /**
-     * データベースに接続します
-     * @return 接続成功時はtrue、失敗時はfalse
-     */
     public boolean connect() {
         Config config = plugin.getPluginConfig();
         this.dbType = config.getDbType().toLowerCase(); // 設定からデータベースタイプを取得
@@ -60,9 +56,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * データベースタイプに応じて接続URLを構築します
-     */
     private String buildConnectionUrl(Config config) {
         String baseUrl;
 
@@ -81,17 +74,11 @@ public class DatabaseManager {
         return baseUrl + params;
     }
 
-    /**
-     * データベース接続を再接続します
-     */
     public void reconnect() {
         disconnect();
         connect();
     }
 
-    /**
-     * データベース接続を閉じます
-     */
     public void disconnect() {
         try {
             if (connection != null && !connection.isClosed()) {
@@ -103,10 +90,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * データベース接続が有効かどうかチェックします
-     * @return 接続が有効な場合はtrue、無効な場合はfalse
-     */
     public boolean isConnectionValid() {
         try {
             if (connection == null || connection.isClosed()) {
@@ -121,10 +104,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * 必要に応じてデータベース接続を確立します
-     * @return 接続が有効な場合はtrue、接続に失敗した場合はfalse
-     */
     public boolean ensureConnection() {
         try {
             if (!isConnectionValid()) {
@@ -138,9 +117,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * 必要なテーブルを作成します
-     */
     private void createTables() throws SQLException {
         // データベースエンジンの設定（MariaDBとMySQLで互換性を保つ）
         String engineClause = "";
@@ -188,18 +164,10 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * 使用中のデータベースタイプを取得します
-     * @return データベースタイプ ("mysql" または "mariadb")
-     */
     public String getDbType() {
         return dbType;
     }
 
-    /**
-     * データベース情報を取得します
-     * @return データベース製品名とバージョン
-     */
     public String getDatabaseInfo() {
         try {
             if (connection != null && !connection.isClosed()) {
@@ -212,9 +180,6 @@ public class DatabaseManager {
         return "Unknown";
     }
 
-    /**
-     * インベントリデータを保存します
-     */
     public void saveInventory(UUID playerUUID, String serverGroup, ItemStack[] inventory) {
         try {
             if (!ensureConnection()) {
@@ -239,9 +204,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * インベントリデータを読み込みます
-     */
     public ItemStack[] loadInventory(UUID playerUUID, String serverGroup) {
         try {
             if (!ensureConnection()) {
@@ -269,9 +231,6 @@ public class DatabaseManager {
         return null;
     }
 
-    /**
-     * エンダーチェストデータを保存します
-     */
     public void saveEnderChest(UUID playerUUID, String serverGroup, ItemStack[] enderChest) {
         try {
             if (!ensureConnection()) {
@@ -296,9 +255,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * エンダーチェストデータを読み込みます
-     */
     public ItemStack[] loadEnderChest(UUID playerUUID, String serverGroup) {
         try {
             if (!ensureConnection()) {
@@ -326,9 +282,6 @@ public class DatabaseManager {
         return null;
     }
 
-    /**
-     * 経済データを保存します
-     */
     public void saveEconomy(UUID playerUUID, String serverGroup, double balance) {
         try {
             if (!ensureConnection()) {
@@ -351,9 +304,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * 経済データを読み込みます
-     */
     public double loadEconomy(UUID playerUUID, String serverGroup) {
         try {
             if (!ensureConnection()) {
@@ -380,9 +330,6 @@ public class DatabaseManager {
         return 0.0;
     }
 
-    /**
-     * ItemStack配列をBase64にシリアライズします
-     */
     private String itemStackArrayToBase64(ItemStack[] items) throws IOException {
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
              BukkitObjectOutputStream dataOutput = new BukkitObjectOutputStream(outputStream)) {
@@ -397,9 +344,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * Base64からItemStack配列を復元します
-     */
     private ItemStack[] itemStackArrayFromBase64(String data) throws IOException, ClassNotFoundException {
         try (ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64Coder.decodeLines(data));
              BukkitObjectInputStream dataInput = new BukkitObjectInputStream(inputStream)) {

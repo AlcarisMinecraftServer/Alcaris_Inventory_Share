@@ -16,10 +16,6 @@ public class EnderChestManager {
         this.plugin = plugin;
     }
 
-    /**
-     * プレイヤーのエンダーチェストを保存します
-     * @param player 保存対象のプレイヤー
-     */
     public void savePlayerEnderChest(Player player) {
         final ItemStack[] enderChestContents = player.getEnderChest().getContents();
         final UUID playerUUID = player.getUniqueId();
@@ -27,11 +23,6 @@ public class EnderChestManager {
         savePlayerEnderChestData(playerUUID, enderChestContents);
     }
 
-    /**
-     * プレイヤーのエンダーチェストデータを保存します (非同期処理用)
-     * @param playerUUID プレイヤーのUUID
-     * @param enderChestContents エンダーチェストの内容
-     */
     public void savePlayerEnderChestData(UUID playerUUID, ItemStack[] enderChestContents) {
         final String serverId = plugin.getPluginConfig().getServerId();
 
@@ -57,11 +48,6 @@ public class EnderChestManager {
         }
     }
 
-    /**
-     * プレイヤーのエンダーチェストをロードします
-     * @param player ロード対象のプレイヤー
-     * @return エンダーチェストが見つかってロードされた場合はtrue、それ以外はfalse
-     */
     public boolean loadPlayerEnderChest(Player player) {
         Object enderChestData = loadPlayerEnderChestData(player.getUniqueId());
         if (enderChestData == null) {
@@ -71,11 +57,6 @@ public class EnderChestManager {
         return applyEnderChestToPlayer(player, enderChestData);
     }
 
-    /**
-     * プレイヤーのエンダーチェストデータをロードします (非同期処理用)
-     * @param playerUUID ロード対象のプレイヤーUUID
-     * @return ロードされたエンダーチェストデータ、見つからない場合はnull
-     */
     public Object loadPlayerEnderChestData(UUID playerUUID) {
         final String serverId = plugin.getPluginConfig().getServerId();
 
@@ -104,16 +85,10 @@ public class EnderChestManager {
             return null;
         }
 
-        plugin.getLogger().info(playerUUID + " のエンダーチェストをグループ " + primaryGroup + " からロードしました。");
+//        plugin.getLogger().info(playerUUID + " のエンダーチェストをグループ " + primaryGroup + " からロードしました。");
         return enderChestContents;
     }
 
-    /**
-     * ロードされたエンダーチェストデータをプレイヤーに適用します (非同期処理用)
-     * @param player データを適用するプレイヤー
-     * @param enderChestData ロードされたエンダーチェストデータ
-     * @return 適用が成功した場合はtrue、失敗した場合はfalse
-     */
     public boolean applyEnderChestToPlayer(Player player, Object enderChestData) {
         // 最初にnullチェックを行う
         if (enderChestData == null) {
@@ -136,12 +111,6 @@ public class EnderChestManager {
         }
     }
 
-    /**
-     * プレイヤーのエンダーチェストを特定のグループの最新データで更新します
-     * @param player 更新対象のプレイヤー
-     * @param groupName 更新元のグループ名
-     * @return 更新成功時はtrue、失敗時はfalse
-     */
     public boolean updatePlayerEnderChest(Player player, String groupName) {
         final UUID playerUUID = player.getUniqueId();
         final String serverId = plugin.getPluginConfig().getServerId();
@@ -171,9 +140,6 @@ public class EnderChestManager {
         }
     }
 
-    /**
-     * 全プレイヤーのエンダーチェストを保存します
-     */
     public void saveAllPlayerEnderChests() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             savePlayerEnderChest(player);

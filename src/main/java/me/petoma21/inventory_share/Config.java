@@ -167,10 +167,6 @@ public class Config {
         return serverConfigs.getOrDefault(serverId, new ServerConfig(true, true));
     }
 
-    /**
-     * 設定の妥当性をチェックします
-     * @return 設定が有効な場合はtrue、無効な場合はfalse
-     */
     public boolean validateConfig() {
         List<String> errors = new ArrayList<>();
 
@@ -205,10 +201,6 @@ public class Config {
         return true;
     }
 
-    /**
-     * 設定情報を文字列として取得します（デバッグ用）
-     * @return 設定情報の文字列
-     */
     public String getConfigInfo() {
         return String.format(
                 "Config Info:\n" +
