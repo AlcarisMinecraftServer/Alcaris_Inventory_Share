@@ -1,4 +1,4 @@
-name: PetoInventoryShare
+name: AlcarisInventoryShare
 version: 1.0.0
 main: me.petoma21.inventory_share.Inventory_Share
 api-version: '1.21'
