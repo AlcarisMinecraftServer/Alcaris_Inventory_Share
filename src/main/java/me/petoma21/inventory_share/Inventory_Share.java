@@ -99,7 +99,7 @@ public class Inventory_Share extends JavaPlugin {
             databaseManager.reconnect();
         }
 
-        getLogger().info("PIS の設定を再読み込みしました。");
+        getLogger().info("AIS の設定を再読み込みしました。");
     }
 
     @SuppressWarnings("unchecked")

@@ -48,7 +48,7 @@ public class PlayerListener implements Listener {
 
         // 最初にプレイヤーのインベントリをクリア（無限増殖バグ防止）
         clearPlayerInventory(player);
-        player.sendMessage("§2[PIS] §aプレイヤーデータを同期中... 動かずにお待ちください");
+        player.sendMessage("§2[AIS] §aプレイヤーデータを同期中... 動かずにお待ちください");
 
         // ログイン時はわずかに遅らせてインベントリを同期
         // 他のプラグインによるインベントリ操作の影響を避けるため
@@ -141,7 +141,7 @@ public class PlayerListener implements Listener {
 
                                 // 同期処理完了のマークを解除
                                 syncingPlayers.remove(playerUUID);
-                                player.sendMessage("§2[PIS] §aデータ同期完了!");
+                                player.sendMessage("§2[AIS] §aデータ同期完了!");
 
                                 // 同期完了サウンドを再生（設定で有効な場合のみ）
                                 playCompletionSound(player);
@@ -152,7 +152,7 @@ public class PlayerListener implements Listener {
                                 // 同期フラグを解除
                                 syncingPlayers.remove(playerUUID);
                                 playerBackups.remove(playerUUID);
-                                player.sendMessage("§2[PIS] §cデータ同期中にエラーが発生しました。スタッフに報告してください！");
+                                player.sendMessage("§2[AIS] §cデータ同期中にエラーが発生しました。スタッフに報告してください！");
                                 plugin.getLogger().warning("Error applying player data for " + player.getName() + ": " + e.getMessage());
                                 e.printStackTrace();
                             }
@@ -167,7 +167,7 @@ public class PlayerListener implements Listener {
                             syncingPlayers.remove(playerUUID);
                             playerBackups.remove(playerUUID);
                             if (player.isOnline()) {
-                                player.sendMessage("§2[PIS] §cデータ同期中にエラーが発生しました。スタッフに報告してください！");
+                                player.sendMessage("§2[AIS] §cデータ同期中にエラーが発生しました。スタッフに報告してください！");
                             }
                             plugin.getLogger().warning("Error loading player data for " + player.getName() + ": " + e.getMessage());
                             e.printStackTrace();
@@ -438,7 +438,7 @@ public class PlayerListener implements Listener {
         // アイテムが見つかった場合、インベントリをクリアして通知
         if (itemsFound) {
             clearPlayerInventory(player);
-            player.sendMessage("§2[PIS] §c同期中に所持したアイテムは足元にドロップされました。");
+            player.sendMessage("§2[AIS] §c同期中に所持したアイテムは足元にドロップされました。");
         }
 
         return itemsFound;

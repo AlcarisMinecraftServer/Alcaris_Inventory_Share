@@ -215,7 +215,7 @@ public class EconomyManager {
             }
             return false;
         } catch (Exception e) {
-            Bukkit.getLogger().warning("[PIS] Failed to set player balance for " + player.getName() + ": " + e.getMessage());
+            Bukkit.getLogger().warning("[AIS] Failed to set player balance for " + player.getName() + ": " + e.getMessage());
             return false;
         }
     }
