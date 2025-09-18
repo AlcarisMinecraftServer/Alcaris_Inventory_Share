@@ -2,7 +2,7 @@ name: AlcarisInventoryShare
 version: 1.0.0
 main: me.petoma21.inventory_share.Inventory_Share
 api-version: '1.21'
-authors: petoma.
+author: petoma.
 description: Minecraft servers inventory sharing plugin using MySQL
 website: https://petoma21.me/
 softdepend: [Vault]
